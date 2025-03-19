@@ -2,42 +2,60 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
-#include <vector>
-struct Point {
-    int x, y;
-};
-std::vector<Point> points;
-#define maxn 200
-int g[maxn][maxn],cnt=1;
-bool isMousePressed = false;
+struct Point {int x, y;}st;
+#define maxn 200 // 定义像素网格大小
+uint8_t g[maxn][maxn],cnt=1,mode=0;
+bool isMousePressed = false; // 鼠标是否按下
 // Bresenham直线算法
-void drawLineBresenham(Point start, Point end) {
-    int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
-    int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
-    int err = dx + dy, e2;
-
-    while (true) {
-        if(g[start.x-1][start.y-1]==0)g[start.x-1][start.y-1] = cnt;
-        if (start.x == end.x && start.y == end.y) break;
-        e2 = 2 * err;
-        if (e2 >= dy) { err += dy; start.x += sx; }
-        if (e2 <= dx) { err += dx; start.y += sy; }
-    }
-}
-// 绘制像素网格
-void draw(GLFWwindow *window) {
-    
-    double xpos, ypos;
+void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     xpos = xpos / width * maxn;
     ypos = (height - ypos) / height * maxn;
-    if(isMousePressed ==true)points.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-    if (points.size() == 2) {
-        drawLineBresenham(points[0], points[1]);
-        points.pop_back();
+}
+
+void drawLineBresenham(Point start, Point end) {
+    int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
+    int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
+    int err = dx + dy, e2;
+    while (true) {
+        if(g[start.x-1][start.y-1]==0)g[start.x-1][start.y-1] = cnt;//画点
+        if (start.x == end.x && start.y == end.y) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; start.x += sx; }
+        if (e2 <= dx) { err += dx; start.y += sy; }
+    }
+}
+void drawcircle(Point center,int r){
+    int x=0,y=r;
+    int d=1-r;
+    while(x<=y){
+        if(g[center.x+x][center.y+y]==0)g[center.x+x][center.y+y]=cnt;
+        if(g[center.x+x][center.y-y]==0)g[center.x+x][center.y-y]=cnt;
+        if(g[center.x-x][center.y+y]==0)g[center.x-x][center.y+y]=cnt;
+        if(g[center.x-x][center.y-y]==0)g[center.x-x][center.y-y]=cnt;
+        if(g[center.x+y][center.y+x]==0)g[center.x+y][center.y+x]=cnt;
+        if(g[center.x+y][center.y-x]==0)g[center.x+y][center.y-x]=cnt;
+        if(g[center.x-y][center.y+x]==0)g[center.x-y][center.y+x]=cnt;
+        if(g[center.x-y][center.y-x]==0)g[center.x-y][center.y-x]=cnt;
+        if(d<0){
+            d+=2*x+3;
+        }
+        else{
+            d+=2*(x-y)+5;
+            y--;
+        }
+        x++;
+    }
+}
+// 绘制像素网格
+void drawLine(GLFWwindow *window) {
+    double xpos, ypos;
+    detectposition(window, xpos, ypos);
+    if(isMousePressed ==true){
+        drawLineBresenham(st, {static_cast<int>(xpos), static_cast<int>(ypos)});
     }
     glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
@@ -52,7 +70,6 @@ void draw(GLFWwindow *window) {
             } else {
                 glColor3f(1.0f, 1.0f, 1.0f); // 白色
             }
-
             // 绘制矩形（每个像素占1x1的正方形）
             glBegin(GL_QUADS);
             glVertex2f(j, i);        // 左下角
@@ -60,17 +77,42 @@ void draw(GLFWwindow *window) {
             glVertex2f(j+1, i+1);    // 右上角
             glVertex2f(j, i+1);      // 左上角
             glEnd();
-
-            
         }
     }
-    
 }
+void drawCircle(GLFWwindow *window){
+    double xpos, ypos;
+    detectposition(window, xpos, ypos);
+    if(isMousePressed ==true){
+        int r=static_cast<int>(sqrt((xpos-st.x)*(xpos-st.x)+(ypos-st.y)*(ypos-st.y)));
+        drawcircle(st,r);
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
+    // 遍历每个像素，绘制矩形
+    for (int i = 0; i < maxn; i++) {
+        for (int j = 0; j < maxn; j++) {
+            // 设置颜色
+            if (g[j][i]) {
+                glColor3f(0.0f, 0.0f, 0.0f); // 黑色
+            } else {
+                glColor3f(1.0f, 1.0f, 1.0f); // 白色
+            }
+            // 绘制矩形（每个像素占1x1的正方形）
+            glBegin(GL_QUADS);
+            glVertex2f(j, i);        // 左下角
+            glVertex2f(j+1, i);      // 右下角
+            glVertex2f(j+1, i+1);    // 右上角
+            glVertex2f(j, i+1);      // 左上角
+            glEnd();
+        }
+    }
+}
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     // 调整视口大小
     glViewport(0, 0, width, height);
-
     // 重新设置正交投影
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -79,25 +121,21 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        if(action == GLFW_PRESS){
-            if(isMousePressed == true){
-                draw(window);
-                cnt++;
-                isMousePressed =false;
-                points.clear();
-                return;
-            }
-            isMousePressed = true;
-            double xpos,ypos;
-            glfwGetCursorPos(window, &xpos, &ypos);
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            xpos = xpos / width * maxn;
-            ypos = (height - ypos) / height * maxn;
-            points.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if(isMousePressed == true){
+            if(mode ==0)
+                drawLine(window);
+            else
+                drawCircle(window);
+            cnt++;
+            isMousePressed =false;
+            st.x=0;st.y=0;
+            return;
         }
-        // else isMousePressed = false;
+        isMousePressed = true;
+        double xpos,ypos;
+        detectposition(window, xpos, ypos);
+        st.x=static_cast<int>(xpos);st.y=static_cast<int>(ypos);
     }
 }
 
@@ -113,9 +151,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             }
         }
         cnt--;
-        if(cnt<1)cnt=1;
+        if(cnt<1)cnt=1;//防止撤回过多
     }
-    
+    if(key == GLFW_KEY_L && action == GLFW_PRESS){
+        mode=0;
+        std::cout<<"Line Mode"<<std::endl;
+
+    }
+    if(key == GLFW_KEY_C && action == GLFW_PRESS){
+        mode=1;
+        std::cout<<"Circle Mode"<<std::endl;
+    }
 }
 
 int main() {
@@ -124,7 +170,6 @@ int main() {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
-
     // 创建窗口
     GLFWwindow* window = glfwCreateWindow(800, 800, "Bresenham Algorithm", NULL, NULL);
     if (!window) {
@@ -159,14 +204,18 @@ int main() {
 
     // 主循环
     while (!glfwWindowShouldClose(window)) {
-        
-        draw(window);//渲染
+        if(mode == 0){
+            drawLine(window);//渲染直线
+        }
+        else{
+            drawCircle(window);//渲染圆
+        }
+        // 刷新屏幕
         for(int i=0;i<maxn;i++){
             for(int j=0;j<maxn;j++){
                 if(g[i][j]==cnt)g[i][j]=0;
             }
         }
-        // 刷新屏幕
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
