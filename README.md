@@ -1,0 +1,1 @@
+把 **src/Experi** 里面的代码贴到main.cpp上，再在项目主文件夹终端输入```make run```即可。
