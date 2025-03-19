@@ -2,12 +2,13 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
-
+#include <vector>
 struct Point {
     int x, y;
 };
+std::vector<Point> points;
 #define maxn 200
-int g[maxn][maxn];
+int g[maxn][maxn], cnt=0;
 
 void setPixel(Point p) {
     g[p.x-1][p.y-1] = 1;
@@ -54,6 +55,7 @@ void draw() {
         }
     }
 }
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     // 调整视口大小
     glViewport(0, 0, width, height);
@@ -63,6 +65,37 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glLoadIdentity();
     glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);
 }
+
+// 鼠标点击回调函数
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+
+        // cnt++;
+        // if(cnt&1){
+        //     for(int i=0; i<maxn; i++)
+        //         for(int j=0; j<maxn; j++)
+        //             g[i][j] = 0;
+        // }//第72行到77行可以实现清屏功能，每次在图上只显示一条线
+
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        // 将窗口坐标转换为OpenGL坐标
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        xpos = xpos / width * maxn;
+        ypos = (height - ypos) / height * maxn;
+        
+
+        points.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+        drawLineBresenham(points[0], points[0]);//这里为了第一次点击时显示一个点
+        if (points.size() == 2) {
+            drawLineBresenham(points[0], points[1]);
+            points.clear();
+        }
+    }
+}
+
 int main() {
     // 初始化GLFW
     if (!glfwInit()) {
@@ -78,8 +111,12 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-    // 注册窗口大小回调函数
+
+    // 注册窗口大小回调函数，这个函数可以在你拉伸窗口后调整图像大小
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    // 注册鼠标点击回调函数，用来鼠标点击画图
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    
     // 初始化GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
@@ -91,8 +128,8 @@ int main() {
     glLoadIdentity();
     glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0); // 坐标范围为[0, maxn]x[0, maxn]
 
-    // 绘制直线（初始化阶段）
-    drawLineBresenham({1, 20}, {200, 200});
+    // 绘制直线（键盘输入绘制）
+    // drawLineBresenham({1, 20}, {200, 200});
 
     // 主循环
     while (!glfwWindowShouldClose(window)) {
