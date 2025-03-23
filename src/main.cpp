@@ -118,7 +118,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glLoadIdentity();
     glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);
 }
-
+//zhujiale
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
