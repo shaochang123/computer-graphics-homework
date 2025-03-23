@@ -21,7 +21,7 @@ void drawLineBresenham(Point start, Point end) {
     int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
     int err = dx + dy, e2;
     while (true) {
-        if(g[start.x-1][start.y-1]==0)g[start.x-1][start.y-1] = cnt;//画点
+        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0)g[start.x-1][start.y-1] = cnt;//画点
         if (start.x == end.x && start.y == end.y) break;
         e2 = 2 * err;
         if (e2 >= dy) { err += dy; start.x += sx; }
@@ -32,14 +32,14 @@ void drawcircle(Point center,int r){
     int x=0,y=r;
     int d=1-r;
     while(x<=y){
-        if(g[center.x+x][center.y+y]==0)g[center.x+x][center.y+y]=cnt;
-        if(g[center.x+x][center.y-y]==0)g[center.x+x][center.y-y]=cnt;
-        if(g[center.x-x][center.y+y]==0)g[center.x-x][center.y+y]=cnt;
-        if(g[center.x-x][center.y-y]==0)g[center.x-x][center.y-y]=cnt;
-        if(g[center.x+y][center.y+x]==0)g[center.x+y][center.y+x]=cnt;
-        if(g[center.x+y][center.y-x]==0)g[center.x+y][center.y-x]=cnt;
-        if(g[center.x-y][center.y+x]==0)g[center.x-y][center.y+x]=cnt;
-        if(g[center.x-y][center.y-x]==0)g[center.x-y][center.y-x]=cnt;
+        if(center.x+x>=0&&center.y+y>=0&&center.x+x<maxn&&center.y+y<maxn&&g[center.x+x][center.y+y]==0)g[center.x+x][center.y+y]=cnt;
+        if(center.x+x>=0&&center.y-y>=0&&center.x+x<maxn&&center.y-y<maxn&&g[center.x+x][center.y-y]==0)g[center.x+x][center.y-y]=cnt;
+        if(center.x-x>=0&&center.y+y>=0&&center.x-x<maxn&&center.y+y<maxn&&g[center.x-x][center.y+y]==0)g[center.x-x][center.y+y]=cnt;
+        if(center.x-x>=0&&center.y-y>=0&&center.x-x<maxn&&center.y-y<maxn&&g[center.x-x][center.y-y]==0)g[center.x-x][center.y-y]=cnt;
+        if(center.x+y>=0&&center.y+x>=0&&center.x+y<maxn&&center.y+x<maxn&&g[center.x+y][center.y+x]==0)g[center.x+y][center.y+x]=cnt;
+        if(center.x+y>=0&&center.y-x>=0&&center.x+y<maxn&&center.y-x<maxn&&g[center.x+y][center.y-x]==0)g[center.x+y][center.y-x]=cnt;
+        if(center.x-y>=0&&center.y+x>=0&&center.x-y<maxn&&center.y+x<maxn&&g[center.x-y][center.y+x]==0)g[center.x-y][center.y+x]=cnt;
+        if(center.x-y>=0&&center.y-x>=0&&center.x-y<maxn&&center.y-x<maxn&&g[center.x-y][center.y-x]==0)g[center.x-y][center.y-x]=cnt;
         if(d<0){
             d+=2*x+3;
         }
