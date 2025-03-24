@@ -1,12 +1,49 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <cmath>
-struct Point {int x, y;}st;
+#include <math.h>
+#include <fstream>
+#define M_PI 3.14159265358979323846
+struct Point {int x, y;}st,Arco,ArcA;
 #define maxn 200 // 定义像素网格大小
-uint8_t g[maxn][maxn],cnt=1,mode=0;
+uint8_t g[maxn][maxn],cnt=1,mode=0,ArcStep=0;
 bool isMousePressed = false; // 鼠标是否按下
-// Bresenham直线算法
+// 保存图像函数
+void saveImage(const char* filename) {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    // 写入文件头
+    file.put(0).put(0).put(2); // 无压缩的TGA格式
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(0).put(0);
+    file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
+    file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
+    file.put(24); // 24位颜色深度
+    file.put(0);
+
+    // 写入像素数据
+    for (int y = 0; y < maxn; ++y) {
+        for (int x = 0; x < maxn; ++x) {
+            uint8_t color = g[x][maxn - y - 1] ? 0 : 255; // 黑色或白色
+            file.put(color).put(color).put(color);
+        }
+    }
+
+    file.close();
+    std::cout << "Image saved to " << filename << std::endl;
+}
+// 改进的角度判断函数
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
     // 将窗口坐标转换为OpenGL坐标
@@ -15,41 +52,21 @@ void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     xpos = xpos / width * maxn;
     ypos = (height - ypos) / height * maxn;
 }
-
-void drawLineBresenham(Point start, Point end) {
+// Bresenham直线算法
+void drawLineBresenham(Point start, Point end, bool arg=false) {
     int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
     int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
-    int err = dx + dy, e2;
+    int err = dx + dy, e2,mark=1;
     while (true) {
-        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0)g[start.x-1][start.y-1] = cnt;//画点
+        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0&&mark%3!=0&&(mark+1)%3!=0)g[start.x-1][start.y-1] = cnt;//画点
         if (start.x == end.x && start.y == end.y) break;
         e2 = 2 * err;
         if (e2 >= dy) { err += dy; start.x += sx; }
         if (e2 <= dx) { err += dx; start.y += sy; }
+        if(arg)mark++;
     }
 }
-void drawcircle(Point center,int r){
-    int x=0,y=r;
-    int d=1-r;
-    while(x<=y){
-        if(center.x+x>=0&&center.y+y>=0&&center.x+x<maxn&&center.y+y<maxn&&g[center.x+x][center.y+y]==0)g[center.x+x][center.y+y]=cnt;
-        if(center.x+x>=0&&center.y-y>=0&&center.x+x<maxn&&center.y-y<maxn&&g[center.x+x][center.y-y]==0)g[center.x+x][center.y-y]=cnt;
-        if(center.x-x>=0&&center.y+y>=0&&center.x-x<maxn&&center.y+y<maxn&&g[center.x-x][center.y+y]==0)g[center.x-x][center.y+y]=cnt;
-        if(center.x-x>=0&&center.y-y>=0&&center.x-x<maxn&&center.y-y<maxn&&g[center.x-x][center.y-y]==0)g[center.x-x][center.y-y]=cnt;
-        if(center.x+y>=0&&center.y+x>=0&&center.x+y<maxn&&center.y+x<maxn&&g[center.x+y][center.y+x]==0)g[center.x+y][center.y+x]=cnt;
-        if(center.x+y>=0&&center.y-x>=0&&center.x+y<maxn&&center.y-x<maxn&&g[center.x+y][center.y-x]==0)g[center.x+y][center.y-x]=cnt;
-        if(center.x-y>=0&&center.y+x>=0&&center.x-y<maxn&&center.y+x<maxn&&g[center.x-y][center.y+x]==0)g[center.x-y][center.y+x]=cnt;
-        if(center.x-y>=0&&center.y-x>=0&&center.x-y<maxn&&center.y-x<maxn&&g[center.x-y][center.y-x]==0)g[center.x-y][center.y-x]=cnt;
-        if(d<0){
-            d+=2*x+3;
-        }
-        else{
-            d+=2*(x-y)+5;
-            y--;
-        }
-        x++;
-    }
-}
+
 // 绘制像素网格
 void drawLine(GLFWwindow *window) {
     double xpos, ypos;
@@ -80,17 +97,56 @@ void drawLine(GLFWwindow *window) {
         }
     }
 }
-void drawCircle(GLFWwindow *window){
+// 圆弧绘制算法
+void checkAndDraw(int px, int py, Point center, double startRad, double endRad) {
+    if (px < 0 || px >= maxn || py < 0 || py >= maxn) return; // 防止超过边界
+    int dx = px - center.x;
+    int dy = center.y - py;
+    double theta = atan2(dy, dx);
+    if (theta < 0) theta += 2 * M_PI;
+    bool inArc = (theta >= startRad && theta <= endRad) || 
+                (startRad > endRad && (theta >= startRad || theta <= endRad));
+    if (inArc && g[px][py] == 0) g[px][py] = cnt;
+}
+void drawarc(Point center, int r, double startRad, double endRad) {
+    int x = 0, y = r;
+    int d = 1 - r;
+    while (x <= y) {
+        checkAndDraw(center.x + x, center.y + y, center, startRad, endRad);
+        checkAndDraw(center.x - x, center.y + y, center, startRad, endRad);
+        checkAndDraw(center.x + x, center.y - y, center, startRad, endRad);
+        checkAndDraw(center.x - x, center.y - y, center, startRad, endRad);
+        checkAndDraw(center.x + y, center.y + x, center, startRad, endRad);
+        checkAndDraw(center.x - y, center.y + x, center, startRad, endRad);
+        checkAndDraw(center.x + y, center.y - x, center, startRad, endRad);
+        checkAndDraw(center.x - y, center.y - x, center, startRad, endRad);
+        
+        if (d < 0) {
+            d += 2 * x + 3;
+        } else {
+            d += 2 * (x - y) + 5;
+            y--;
+        }
+        x++;
+    }
+}
+void drawArc(GLFWwindow *window){
     double xpos, ypos;
     detectposition(window, xpos, ypos);
-    if(isMousePressed ==true){
-        int r=static_cast<int>(sqrt((xpos-st.x)*(xpos-st.x)+(ypos-st.y)*(ypos-st.y)));
-        drawcircle(st,r);
+    if(ArcStep==1){
+        drawLineBresenham(Arco, {static_cast<int>(xpos), static_cast<int>(ypos)},true);//最后的参数变为true，表示画虚线
+    }
+    else if(ArcStep==2){
+        double r=sqrt((ArcA.x-Arco.x)*(ArcA.x-Arco.x)+(ArcA.y-Arco.y)*(ArcA.y-Arco.y));
+        double startRad = atan2(Arco.y - ArcA.y, ArcA.x - Arco.x);
+        double endRad = atan2(Arco.y - ypos, xpos - Arco.x);
+        if (startRad < 0) startRad += 2 * M_PI;
+        if(endRad < 0) endRad += 2*M_PI;
+        drawarc(Arco, r, startRad, endRad);
     }
     glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
     // 遍历每个像素，绘制矩形
     for (int i = 0; i < maxn; i++) {
         for (int j = 0; j < maxn; j++) {
@@ -122,11 +178,27 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if(mode==1){
+            if(ArcStep==0){
+                double xpos, ypos;
+                detectposition(window, xpos, ypos);
+                Arco.x=static_cast<int>(xpos);Arco.y=static_cast<int>(ypos);
+            }
+            else if(ArcStep==1){
+                double xpos, ypos;
+                detectposition(window, xpos, ypos);
+                ArcA.x=static_cast<int>(xpos);ArcA.y=static_cast<int>(ypos);
+            }
+            else if(ArcStep==2){
+                drawArc(window);
+                cnt++;
+            }
+            ArcStep=(ArcStep+1)%3;
+            return;
+        }
         if(isMousePressed == true){
-            if(mode ==0)
-                drawLine(window);
-            else
-                drawCircle(window);
+            drawLine(window);
+            //这里是防止画完直线后就被窗口刷新掉，所以在这里再画一次
             cnt++;
             isMousePressed =false;
             st.x=0;st.y=0;
@@ -154,13 +226,18 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if(cnt<1)cnt=1;//防止撤回过多
     }
     if(key == GLFW_KEY_L && action == GLFW_PRESS){
+        isMousePressed = false;
         mode=0;
         std::cout<<"Line Mode"<<std::endl;
 
     }
     if(key == GLFW_KEY_C && action == GLFW_PRESS){
+        isMousePressed = false;
         mode=1;
         std::cout<<"Circle Mode"<<std::endl;
+    }
+    if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
+        saveImage("output.tga");
     }
 }
 
@@ -171,7 +248,7 @@ int main() {
         return -1;
     }
     // 创建窗口
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Bresenham Algorithm", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "Painting Toolbox", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -208,7 +285,7 @@ int main() {
             drawLine(window);//渲染直线
         }
         else{
-            drawCircle(window);//渲染圆
+            drawArc(window);//渲染圆弧
         }
         // 刷新屏幕
         for(int i=0;i<maxn;i++){
@@ -221,5 +298,6 @@ int main() {
     }
     // 清理并退出
     glfwTerminate();
+    std::cout<<"bye\n"<<std::endl;
     return 0;
 }
