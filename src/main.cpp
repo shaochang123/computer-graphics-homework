@@ -94,12 +94,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
                 case 0:
                     arcO = current;
                     arcStep = 1;
-                    std::cout << "圆心已选择，点击确定半径\n";
+                    std::cout << "With the center of the circle selected, click to determine the radius\n";
                     break;
                 case 1:
                     arcA = current;
                     arcStep = 2;
-                    std::cout << "半径已确定，点击确定终点\n";
+                    std::cout << "radius is selected,click to determine the destination\n";
                     break;
                 case 2: {
                     int dx = arcA.x - arcO.x;
@@ -141,21 +141,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         switch (key) {
             case GLFW_KEY_L: 
                 mode = 0; 
-                std::cout << "直线模式\n";
+                std::cout << "line mode\n";
                 break;
             case GLFW_KEY_C: 
                 mode = 1; 
-                std::cout << "圆形模式\n";
+                std::cout << "circle mode\n";
                 break;
             case GLFW_KEY_A: 
                 mode = 2; 
                 arcStep = 0;
-                std::cout << "圆弧模式（三步操作）\n";
+                std::cout << "part of circle(three steps)\n";
                 break;
             case GLFW_KEY_Z:
                 cnt = cnt > 1 ? cnt-1 : 1;
                 memset(g, 0, sizeof(g)); 
-                std::cout << "已重置画布\n";
+                std::cout << "reset\n";
                 break;
         }
     }
@@ -201,7 +201,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 int main() {
     if (!glfwInit()) return -1;
 
-    GLFWwindow* window = glfwCreateWindow(800, 800, "绘图工具", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "painting toolbox", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return -1;
