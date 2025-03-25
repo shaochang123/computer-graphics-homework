@@ -1,5 +1,6 @@
 <h2>如何运行</h2><br>
 把 **src/Experi** 里面的代码贴到main.cpp上，再在项目主文件夹终端输入```make run```即可，或者编译成功后运行output文件下的main.exe可执行文件。
+如果输入```make run```后提示没有make命令，改为输入```mingw32-make run```。
 
 <h2>one.cpp</h2> <br>
 绘制直线和圆弧，窗口启动之后，可以按键盘上的l或者c来切换直线或者圆弧模式，按```ctrl+z```可以撤销上一次操作，按```ctrl+s```可以将图像保存到当前目录下(output.tga)<br>
