@@ -5,7 +5,7 @@
 #include <fstream>
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;}st,Arco,ArcA;
-#define maxn 200 // 定义像素网格大小
+#define maxn 200 // 定义像s素网格大小
 uint8_t g[maxn][maxn],cnt=1,mode=0,ArcStep=0;
 bool isMousePressed = false; // 鼠标是否按下
 // 保存图像函数
