@@ -15,7 +15,6 @@ void saveImage(const char* filename) {
         std::cerr << "Failed to open file for writing: " << filename << std::endl;
         return;
     }
-
     // 写入文件头
     file.put(0).put(0).put(2); // 无压缩的TGA格式
     file.put(0).put(0);
@@ -28,18 +27,7 @@ void saveImage(const char* filename) {
     file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
     file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
     file.put(24); // 24位颜色深度
-    file.put(0);
-
-    // 写入像素数据
-    for (int y = 0; y < maxn; ++y) {
-        for (int x = 0; x < maxn; ++x) {
-            uint8_t color = g[x][maxn - y - 1] ? 0 : 255; // 黑色或白色
-            file.put(color).put(color).put(color);
-        }
-    }
-
-    file.close();
-    std::cout << "Image saved to " << filename << std::endl;
+    file.put(0);  
 }
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
@@ -48,7 +36,7 @@ void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     xpos = xpos / width * maxn;
-    ypos = (height - ypos) / height * maxn;
+    ypos = maxn - ypos / height * maxn;
 }
 // 渲染函数，将g数组的像素网格渲染到窗口上
 void render(){
@@ -139,18 +127,22 @@ void drawLine(GLFWwindow *window){
 }
 // 圆弧绘制算法
 void checkAndDraw(int px, int py, Point center, double startRad, double endRad) {
-    if (px < 0 || px >= maxn || py < 0 || py >= maxn) return; // 防止超过边界
+    if (px < 0 || px >= maxn || py < 0 || py >= maxn) return;
     int dx = px - center.x;
     int dy = center.y - py;
     double theta = atan2(dy, dx);
     if (theta < 0) theta += 2 * M_PI;
-    bool inArc = (theta >= startRad && theta <= endRad) || //如果该点刚好在夹角之间，画点
-                (startRad > endRad && (theta >= startRad || theta <= endRad));//如果起始角度和终止角度跨越了0度（起始角度比终止角度大），那么就要特殊处理
+    bool inArc = (theta >= startRad && theta <= endRad) || //在起始角度和终止角度之间
+                (startRad > endRad && (theta >= startRad || theta <= endRad));//起始角度到终止角度跨越了0度，就要特殊考虑
+    
     if (inArc && g[px][py] == 0) g[px][py] = cnt;
 }
+
+// 优化后的圆弧绘制算法
 void drawarc(Point center, int r, double startRad, double endRad) {
     int x = 0, y = r;
     int d = 1 - r;
+    
     while (x <= y) {
         //这里按照象限分了八个区域，更方便处理
         checkAndDraw(center.x + x, center.y + y, center, startRad, endRad);
@@ -188,14 +180,6 @@ void drawArc(GLFWwindow *window){
     }
     render();
 }
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    // 调整视口大小
-    glViewport(0, 0, width, height);
-    // 重新设置正交投影
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();//重置当前的投影矩阵
-    glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);//设置正交投影
-}
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {//左键按下
@@ -213,7 +197,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             else if(ArcStep==2){//圆弧画好后，cnt++
                 drawArc(window);
                 cnt++;
-            }
+            } 
             ArcStep=(ArcStep+1)%3;//每次点击左键，ArcStep+1，画完了重置为0
             return;
         }
@@ -223,13 +207,14 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             cnt++;
             isMousePressed =false;
             st.x=0;st.y=0;
+            return;
         }
-        else{
-            isMousePressed = true;
-            double xpos,ypos;
-            detectposition(window, xpos, ypos);
-            st.x=static_cast<int>(xpos);st.y=static_cast<int>(ypos);
-        }
+        
+        isMousePressed = true;
+        double xpos,ypos;
+        detectposition(window, xpos, ypos);
+        st.x=static_cast<int>(xpos);st.y=static_cast<int>(ypos);
+        
     }
 }
 
@@ -254,7 +239,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     }
     if(key == GLFW_KEY_C && action == GLFW_PRESS){//切换到圆弧模式
-        isMousePressed = false;
+        ArcStep = 0;
         mode=1;
         std::cout<<"Circle Mode"<<std::endl;
     }
@@ -263,20 +248,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    // 调整视口大小
+    glViewport(0, 0, width, height);
+    // 重新设置正交投影
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();//重置当前的投影矩阵
+    glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);//设置正交投影
+}
 int main() {
-    // 初始化GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
-    // 创建窗口
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Painting Toolbox", NULL, NULL);
+    if (!glfwInit()) return -1;
+    const int width = 800, height = 800;
+    GLFWwindow* window = glfwCreateWindow(width, height, "painting toolbox", NULL, NULL);
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
-    glfwMakeContextCurrent(window);//将窗口的上下文设置为当前线程的主上下文
+    glfwMakeContextCurrent(window);
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
 
     // 注册窗口大小回调函数，这个函数可以在你拉伸窗口后调整图像大小
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -286,23 +279,12 @@ int main() {
     
     // 注册键盘回调函数
     glfwSetKeyCallback(window, key_callback);
-
-    // 初始化GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    // 设置正交投影
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0); // 坐标范围为[0, maxn]x[0, maxn]
-
-    // 绘制直线（键盘输入绘制）
-    // drawLineBresenham({1, 20}, {200, 200});
-
-    // 主循环
+    
+    // 初始化投影
+    framebuffer_size_callback(window, width, height);
+    
     while (!glfwWindowShouldClose(window)) {
+        glClear(GL_COLOR_BUFFER_BIT); // 清空颜色缓冲区
         if(mode == 0){
             drawLine(window);//渲染直线
         }
@@ -315,10 +297,11 @@ int main() {
                 if(g[i][j]==cnt)g[i][j]=0;
             }
         }
+        // framebuffer_size_callback(window, maxn, maxn);
         glfwSwapBuffers(window);//交换缓冲区
         glfwPollEvents();//处理所有未决事件
     }
-    // 清理并退出
+
     glfwTerminate();
     std::cout<<"bye\n"<<std::endl;//bye
     return 0;
