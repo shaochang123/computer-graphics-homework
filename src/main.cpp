@@ -6,6 +6,7 @@
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;}st,Arco,ArcA; // 定义点结构体，直线的初始点st，圆弧的圆心Arco和圆弧上的点ArcA
 #define maxn 200 // 定义像素网格大小
+int w=1;
 uint8_t g[maxn][maxn],cnt=1,mode=0,ArcStep=0;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，ArcStep是绘制圆弧的步骤
 bool isMousePressed = false; // 鼠标是否按下，实际上只为直线模式服务。
 // 保存图像函数
@@ -69,7 +70,24 @@ void drawLineBresenham(Point start, Point end, bool arg=false) {//这里的arg�
     const int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
     int err = dx + dy, e2,mark=1;
     while (true) {
-        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0&&mark%3!=0&&(mark+1)%3!=0)g[start.x-1][start.y-1] = cnt;//把对应的像素点“涂黑”
+        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0&&mark%3!=0&&(mark+1)%3!=0)
+        {g[start.x-1][start.y-1] = cnt;
+        if(w==2){
+            g[start.x-1][start.y-1] = cnt;
+            g[start.x-2][start.y-1] = cnt;
+            g[start.x-1][start.y-2] = cnt;
+            g[start.x-2][start.y-2] = cnt;}
+        if(w==3){
+            g[start.x-1][start.y-1] = cnt;
+            g[start.x-2][start.y-1] = cnt;
+            g[start.x-1][start.y-2] = cnt;
+            g[start.x-3][start.y-1] = cnt;
+            g[start.x-1][start.y-3] = cnt;
+            g[start.x-3][start.y-2] = cnt;
+            g[start.x-2][start.y-3] = cnt;
+            g[start.x-2][start.y-2] = cnt;
+            g[start.x-3][start.y-3] = cnt;}
+        }//把对应的像素点“涂黑”
         //为何要加上 g[start.x-1][start.y-1] == 0？因为如果这个点已经被画过了，就不要再画了，否则在撤回时会导致另外一个图形出现断点
         if (start.x == end.x && start.y == end.y) break;
         e2 = 2 * err;
@@ -243,10 +261,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         mode=1;
         std::cout<<"Circle Mode"<<std::endl;
     }
+    if(key == GLFW_KEY_1 && action == GLFW_PRESS){//切换线宽1
+        w=1;
+        std::cout<<"width1"<<std::endl;
+    }
+    if(key == GLFW_KEY_2 && action == GLFW_PRESS){//切换线宽2
+        w=2;
+        std::cout<<"width2"<<std::endl;
+    }
+    if(key == GLFW_KEY_3 && action == GLFW_PRESS){//切换线宽3
+        w=3;
+        std::cout<<"width3"<<std::endl;
+    }
     if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {//保存图像
         saveImage("output.tga");
     }
 }
+
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -306,3 +337,6 @@ int main() {
     std::cout<<"bye\n"<<std::endl;//bye
     return 0;
 }
+
+
+
