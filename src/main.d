@@ -1,2 +1,3 @@
-src/main.o: src/main.cpp include/glad/glad.h include/KHR/khrplatform.h \
- include/GLFW/glfw3.h
+src/main.o: src/main.cpp include/graph/Line.h include/graph/init.h \
+ include/GLFW/glfw3.h include/glad/glad.h include/KHR/khrplatform.h \
+ include/graph/Circle.h
