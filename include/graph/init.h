@@ -10,7 +10,7 @@
 struct Point {int x, y;};
 #define maxn 200 // 定义像素网格大小
 uint8_t g[maxn][maxn],cnt=1,mode=0;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，ArcStep是绘制圆弧的步骤
-
+void setpixel(int x,int y){if(x>=0&&x<maxn&&y>=0&&y<maxn&&g[x][y]==0)g[x][y]=cnt;}
 // 保存图像函数
 void saveImage(const char* filename) {
     std::ofstream file(filename, std::ios::binary);

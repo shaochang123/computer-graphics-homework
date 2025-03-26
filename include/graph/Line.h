@@ -5,13 +5,25 @@
 #endif
 bool isMousePressed = false; // 鼠标是否按下，实际上只为直线模式服务。
 Point st;//直线初始点st
+int w = 1;
 // Bresenham直线算法
 void drawLineBresenham(Point start, Point end, bool arg=false) {//这里的arg是为了区分是否画虚线，为True时画虚线
     const int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
     const int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
     int err = dx + dy, e2,mark=1;
     while (true) {
-        if(start.x-1>=0&&start.y-1>=0&&start.x-1<maxn&&start.y-1<maxn&&g[start.x-1][start.y-1]==0&&mark%3!=0&&(mark+1)%3!=0)g[start.x-1][start.y-1] = cnt;//把对应的像素点“涂黑”
+        if(mark%3!=0&&(mark+1)%3!=0){
+            setpixel(start.x-1,start.y-1);
+            if(w>=2){
+                setpixel(start.x-1,start.y-2);
+                setpixel(start.x-1,start.y);
+            }
+            if(w>=3){
+                setpixel(start.x-1,start.y-3);
+                setpixel(start.x-1,start.y+1);
+            }
+        }
+        //把对应的像素点“涂黑”
         //为何要加上 g[start.x-1][start.y-1] == 0？因为如果这个点已经被画过了，就不要再画了，否则在撤回时会导致另外一个图形出现断点
         if (start.x == end.x && start.y == end.y) break;
         e2 = 2 * err;
@@ -89,6 +101,20 @@ void Line_Keyboard_Pressed(int key, int mods, int action){
         mode=0;
         std::cout<<"Line Mode"<<std::endl;
 
+    }
+    if(mode == 0){
+        if(key == GLFW_KEY_1 && action == GLFW_PRESS){//切换线宽1
+            w=1;
+            std::cout<<"width1"<<std::endl;
+        }
+        if(key == GLFW_KEY_2 && action == GLFW_PRESS){//切换线宽2
+            w=2;
+            std::cout<<"width2"<<std::endl;
+        }
+        if(key == GLFW_KEY_3 && action == GLFW_PRESS){//切换线宽3
+            w=3;
+            std::cout<<"width3"<<std::endl;
+        }
     }
 }
 #endif
