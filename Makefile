@@ -4,7 +4,6 @@
 #
 
 # define the Cpp compiler to use
-SHELL = cmd.exe
 CXX = g++
 
 # define any compile-time flags
@@ -26,30 +25,33 @@ INCLUDE	:= include
 
 # define lib directory
 LIB		:= lib
-LIBRARIES	:= -lopengl32 -lglad -lglfw3dll      # add
+
+# define libraries
+LIBRARIES := -lGL -lGLEW -lglad -lglfw
 ifeq ($(OS),Windows_NT)
-MAIN	:= main.exe
+LIBRARIES	:= -lopengl32 -lglew32 -lglad -lglfw3dll
+MAIN		:= main.exe
 SOURCEDIRS	:= $(SRC)
 INCLUDEDIRS	:= $(INCLUDE)
 LIBDIRS		:= $(LIB)
 FIXPATH = $(subst /,\,$1)
 RM			:= del /q /f
-MD	:= mkdir
+MD			:= mkdir
 else
-MAIN	:= main
+MAIN		:= main
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
 INCLUDEDIRS	:= $(shell find $(INCLUDE) -type d)
 LIBDIRS		:= $(shell find $(LIB) -type d)
 FIXPATH = $1
-RM = rm -f
-MD	:= mkdir -p
+RM			:= rm -f
+MD			:= mkdir -p
 endif
 
 # define any directories containing header files other than /usr/include
 INCLUDES	:= $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
 
 # define the C libs
-LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%)) -lopengl32
+LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%))
 
 # define the C source files
 SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
@@ -60,12 +62,7 @@ OBJECTS		:= $(SOURCES:.cpp=.o)
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
 
-#
-# The following part of the makefile is generic; it can be used to
-# build any executable just by changing the definitions above and by
-# deleting dependencies appended to the file from 'make depend'
-#
-
+# define output executable
 OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
 
 all: $(OUTPUT) $(MAIN)
@@ -96,5 +93,5 @@ clean:
 	@echo Cleanup complete!
 
 run: all
-	./$(OUTPUTMAIN)
+	$(OUTPUTMAIN)
 	@echo Executing 'run: all' complete!
