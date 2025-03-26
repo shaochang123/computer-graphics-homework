@@ -30,3 +30,6 @@ int main() {
     glfwTerminate();std::cout<<"bye\n"<<std::endl;//bye
     return 0;
 }
+
+
+
