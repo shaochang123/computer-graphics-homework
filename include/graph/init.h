@@ -5,12 +5,27 @@
 #include <iostream>
 #include <math.h>
 #include <queue>
+#include <vector>
 #include <fstream>
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;};
-#define maxn 800 // 定义像素网格大小
-uint8_t g[maxn][maxn],cnt=1,mode=0;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，ArcStep是绘制圆弧的步骤
-void setpixel(int x,int y){if(x>=0&&x<maxn&&y>=0&&y<maxn&&g[x][y]==0)g[x][y]=cnt;}
+// 在文件开头的全局变量部分添加
+struct Color {
+    float r, g, b;
+};
+Color currentColor = {0.0f, 0.0f, 0.0f}; // 默认为黑色
+std::vector<Color>Cnt2Color;
+#define maxn 200 // 定义像素网格大小
+uint8_t g[maxn][maxn],cnt=1,mode=0,w=1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，ArcStep是绘制圆弧的步骤
+void setpixel(int x,int y, int w=1){
+    for(int i =x-w+1;i<=x+w-1;i++){
+        for(int j=y-w+1;j<=y+w-1;j++){
+            if(i>=0&&i<maxn&&j>=0&&j<maxn&&g[i][j]==0)g[i][j]=cnt;
+            
+        }
+    }
+    
+}
 // 保存图像函数
 void saveImage(const char* filename) {
     std::ofstream file(filename, std::ios::binary);
@@ -38,8 +53,8 @@ void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    xpos = xpos / width * maxn;
-    ypos = maxn - ypos / height * maxn;
+    xpos = xpos / width * maxn + 1;
+    ypos = maxn - ypos / height * maxn + 1;
 }
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     // 调整视口大小
@@ -60,7 +75,8 @@ void render(){
         for (int j = 0; j < maxn; j++) {
             // 设置颜色
             if (g[j][i]) {
-                glColor3f(0.0f, 0.0f, 0.0f); // 黑色
+                if(g[j][i]!=cnt)glColor3f(Cnt2Color[g[j][i]-1].r,Cnt2Color[g[j][i]-1].g,Cnt2Color[g[j][i]-1].b); // 历史图形颜色
+                else glColor3f(currentColor.r,currentColor.g,currentColor.b);
             } else {
                 glColor3f(1.0f, 1.0f, 1.0f); // 白色
             }
@@ -79,6 +95,7 @@ void flushwindow(){
     for(int i=0;i<maxn;i++){
         for(int j=0;j<maxn;j++){
             if(g[i][j]==cnt)g[i][j]=0;
+
         }
     }
 }
@@ -92,6 +109,7 @@ void ReturnToBack(int key, int mods, int action){
                 }
             }
         }
+        if(!Cnt2Color.empty())Cnt2Color.pop_back();
         cnt--;//退时间戳
         if(cnt<1)cnt=1;//防止撤回过多
     }
@@ -99,6 +117,66 @@ void ReturnToBack(int key, int mods, int action){
 void Save2Image(int key, int mods, int action){
     if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {//保存图像
         saveImage("output.tga");
+    }
+}
+void ConvertWidth(int key,int mods,int action){
+    if(key == GLFW_KEY_1 && action == GLFW_PRESS){
+        w = 1;
+        std::cout<<"Width = 1 now\n";
+    }
+    if(key == GLFW_KEY_2 && action == GLFW_PRESS){
+        w = 2;
+        std::cout<<"Width = 2 now\n";
+    }
+    if(key == GLFW_KEY_3 && action == GLFW_PRESS){
+        w = 3;
+        std::cout<<"Width = 3 now\n";
+    }
+    if(key == GLFW_KEY_4 && action == GLFW_PRESS){
+        w = 4;
+        std::cout<<"Width = 4 now\n";
+    }
+    if(key == GLFW_KEY_5 && action == GLFW_PRESS){
+        w = 5;
+        std::cout<<"Width = 5 now\n";
+    }
+}
+void ConvertColor(int key, int mods, int action) {
+    if (mods=GLFW_MOD_CONTROL && action == GLFW_PRESS) {
+        switch (key) {
+            case GLFW_KEY_R: // 红色
+                currentColor = {1.0f, 0.0f, 0.0f};
+                std::cout << "Color set to Red\n";
+                break;
+            case GLFW_KEY_G: // 绿色
+                currentColor = {0.0f, 1.0f, 0.0f};
+                std::cout << "Color set to Green\n";
+                break;
+            case GLFW_KEY_B: // 蓝色
+                currentColor = {0.0f, 0.0f, 1.0f};
+                std::cout << "Color set to Blue\n";
+                break;
+            case GLFW_KEY_Y: // 黄色
+                currentColor = {1.0f, 1.0f, 0.0f};
+                std::cout << "Color set to Yellow\n";
+                break;
+            case GLFW_KEY_C: // 青色
+                currentColor = {0.0f, 1.0f, 1.0f};
+                std::cout << "Color set to Cyan\n";
+                break;
+            case GLFW_KEY_M: // 洋红色
+                currentColor = {1.0f, 0.0f, 1.0f};
+                std::cout << "Color set to Magenta\n";
+                break;
+            case GLFW_KEY_K: // 黑色
+                currentColor = {0.0f, 0.0f, 0.0f};
+                std::cout << "Color set to Black\n";
+                break;
+            case GLFW_KEY_W: // 白色
+                currentColor = {1.0f, 1.0f, 1.0f};
+                std::cout << "Color set to White\n";
+                break;
+        }
     }
 }
 GLFWwindow* init(int width, int height){

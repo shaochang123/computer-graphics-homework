@@ -1,11 +1,14 @@
 #include<graph/Line.h>
 #include<graph/Circle.h>
 #include<graph/Fill.h>
+#include<graph/Polygon.h>
+#include<graph/Crop.h>
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     Line_Mouse_Pressed(window, button, action, mods);
     Circle_Mouse_Pressed(window, button, action, mods);
     Fill_Mouse_Pressed(window, button, action, mods);
+    Polygon_Mouse_Pressed(window, button, action, mods);
 }
 // 键盘回调函数
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -14,6 +17,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     Line_Keyboard_Pressed(key, mods, action);
     Circle_Keyboard_Pressed(key, mods, action);
     Fill_Keyboard_Pressed(key, mods, action);
+    Polygon_Keyboard_Pressed(key, mods, action);
+    ConvertWidth(key,mods,action);
+    ConvertColor(key,mods,action);
 }
 int main() {
     const int width = 800, height = 800;//设置窗口大小
@@ -26,6 +32,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT); // 清空颜色缓冲区
         if(mode == 0) drawLine(window);//渲染直线
         else if(mode==1) drawArc(window);//渲染圆弧
+        else if(mode==3) drawPolygon(window);//渲染填充
         else render();
         flushwindow();//刷新屏幕
         glfwSwapBuffers(window);//交换缓冲区
