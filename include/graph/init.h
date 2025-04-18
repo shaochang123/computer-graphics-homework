@@ -6,46 +6,36 @@
 #include <math.h>
 #include <queue>
 #include <vector>
+#include <stack>
 #include <fstream>
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;};
-// 在文件开头的全局变量部分添加
-struct Color {
-    float r, g, b;
+struct Color{
+    float r,g,b;//颜色值
+    Color(float _r=0.0f,float _g=0.0f,float _b=0.0f):r(_r),g(_g),b(_b){}//构造函数
 };
-Color currentColor = {0.0f, 0.0f, 0.0f}; // 默认为黑色
-std::vector<Color>Cnt2Color;
+
+struct graphic{
+    std::vector<Point>points;//此图形的所有点
+    int mode;//图形类型 0为直线
+    Color color={0,0,0};//图形颜色
+    int width=1;//线宽
+    int dx=0,dy=0;
+};
+std::vector<Point>curpoints;//当前图形的所有点
+std::vector<graphic>graphics;//所有图形
+std::stack<graphic>graphicsbackup;//撤回的图形
 #define maxn 200 // 定义像素网格大小
-uint8_t g[maxn][maxn],cnt=1,mode=0,w=1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，ArcStep是绘制圆弧的步骤
-void setpixel(int x,int y, int w=1){
+Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
+int mode=0,curwidth=1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
+double xpos,ypos;//鼠标坐标
+#include<transform/selectgraph.h>
+void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
     for(int i =x-w+1;i<=x+w-1;i++){
         for(int j=y-w+1;j<=y+w-1;j++){
-            if(i>=0&&i<maxn&&j>=0&&j<maxn&&g[i][j]==0)g[i][j]=cnt;
-            
+            if(i>=0&&i<maxn&&j>=0&&j<maxn)g[j][i]=colorr;//将像素点涂黑
         }
     }
-    
-}
-// 保存图像函数
-void saveImage(const char* filename) {
-    std::ofstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Failed to open file for writing: " << filename << std::endl;
-        return;
-    }
-    // 写入文件头
-    file.put(0).put(0).put(2); // 无压缩的TGA格式
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(0).put(0);
-    file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
-    file.put(maxn & 0x00FF).put((maxn & 0xFF00) >> 8);
-    file.put(24); // 24位颜色深度
-    file.put(0);  
 }
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
@@ -69,17 +59,11 @@ void render(){
     glClear(GL_COLOR_BUFFER_BIT);//清空颜色缓冲区
     glMatrixMode(GL_MODELVIEW);//设置模型视图矩阵
     glLoadIdentity();//重置当前的模型视图矩阵
-
     // 遍历每个像素，绘制矩形
     for (int i = 0; i < maxn; i++) {
         for (int j = 0; j < maxn; j++) {
             // 设置颜色
-            if (g[j][i]) {
-                if(g[j][i]!=cnt)glColor3f(Cnt2Color[g[j][i]-1].r,Cnt2Color[g[j][i]-1].g,Cnt2Color[g[j][i]-1].b); // 历史图形颜色
-                else glColor3f(currentColor.r,currentColor.g,currentColor.b);
-            } else {
-                glColor3f(1.0f, 1.0f, 1.0f); // 白色
-            }
+            glColor3f(g[i][j].r, g[i][j].g, g[i][j].b);
             // 绘制矩形（每个像素占1x1的正方形）
             glBegin(GL_QUADS);
             glVertex2f(j, i);        // 左下角
@@ -94,88 +78,89 @@ void flushwindow(){
     // 刷新屏幕
     for(int i=0;i<maxn;i++){
         for(int j=0;j<maxn;j++){
-            if(g[i][j]==cnt)g[i][j]=0;
-
+            g[i][j]={1.0,1.0,1.0};
         }
     }
 }
-void ReturnToBack(int key, int mods, int action){
-    if (key == GLFW_KEY_Z && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {//撤回操作
-        // 将 g 上面为 cnt 的格子变为白色
-        for (int i = 0; i < maxn; i++) {
-            for (int j = 0; j < maxn; j++) {
-                if (g[i][j] == cnt-1) {
-                    g[i][j] = 0;
-                }
+void ChangeWidth(int key,int action){
+    if(key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        if(mode!=-1){
+            curwidth++;
+            std::cout << "Line width increased to: " << curwidth << std::endl;
+        }
+        else {
+            graphics[ChooseIdx].width++;
+            std::cout << "Line width increased to: " << graphics[ChooseIdx].width << std::endl;
+        }
+        
+    }
+    else if(key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        if(curwidth > 1 && mode!=-1) {
+            curwidth--;
+            std::cout << "Line width decreased to: " << curwidth << std::endl;
+        }
+        else{
+            if(graphics[ChooseIdx].width>1){
+                graphics[ChooseIdx].width--;
+                std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
             }
         }
-        if(!Cnt2Color.empty())Cnt2Color.pop_back();
-        cnt--;//退时间戳
-        if(cnt<1)cnt=1;//防止撤回过多
     }
 }
-void Save2Image(int key, int mods, int action){
-    if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {//保存图像
-        saveImage("output.tga");
+void ChangeColor(int key,int action){
+    if(key == GLFW_KEY_R && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {1.0f, 0.0f, 0.0f}; // 红色
+        else graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
+        std::cout << "Color changed to red" << std::endl;
+    }
+    else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {0.0f, 1.0f, 0.0f}; // 绿色
+        else graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
+        std::cout << "Color changed to green" << std::endl;
+    }
+    else if(key == GLFW_KEY_B && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {0.0f, 0.0f, 1.0f}; // 蓝色
+        else graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
+        std::cout << "Color changed to blue" << std::endl;
     }
 }
-void ConvertWidth(int key,int mods,int action){
-    if(key == GLFW_KEY_1 && action == GLFW_PRESS){
-        w = 1;
-        std::cout<<"Width = 1 now\n";
-    }
-    if(key == GLFW_KEY_2 && action == GLFW_PRESS){
-        w = 2;
-        std::cout<<"Width = 2 now\n";
-    }
-    if(key == GLFW_KEY_3 && action == GLFW_PRESS){
-        w = 3;
-        std::cout<<"Width = 3 now\n";
-    }
-    if(key == GLFW_KEY_4 && action == GLFW_PRESS){
-        w = 4;
-        std::cout<<"Width = 4 now\n";
-    }
-    if(key == GLFW_KEY_5 && action == GLFW_PRESS){
-        w = 5;
-        std::cout<<"Width = 5 now\n";
+void saveImage(int key, int mods, int action){
+    if(key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
+        std::ofstream out("image.txt");
+        if(out.is_open()) {
+            for(int i = 0; i < maxn; i++) {
+                for(int j = 0; j < maxn; j++) {
+                    out << g[i][j].r << " " << g[i][j].g << " " << g[i][j].b << "\n";
+                }
+            }
+            out.close();
+            std::cout << "Image saved to image.txt" << std::endl;
+        } else {
+            std::cerr << "Failed to open file for saving" << std::endl;
+        }
     }
 }
-void ConvertColor(int key, int mods, int action) {
-    if (mods=GLFW_MOD_CONTROL && action == GLFW_PRESS) {
-        switch (key) {
-            case GLFW_KEY_R: // 红色
-                currentColor = {1.0f, 0.0f, 0.0f};
-                std::cout << "Color set to Red\n";
-                break;
-            case GLFW_KEY_G: // 绿色
-                currentColor = {0.0f, 1.0f, 0.0f};
-                std::cout << "Color set to Green\n";
-                break;
-            case GLFW_KEY_B: // 蓝色
-                currentColor = {0.0f, 0.0f, 1.0f};
-                std::cout << "Color set to Blue\n";
-                break;
-            case GLFW_KEY_Y: // 黄色
-                currentColor = {1.0f, 1.0f, 0.0f};
-                std::cout << "Color set to Yellow\n";
-                break;
-            case GLFW_KEY_C: // 青色
-                currentColor = {0.0f, 1.0f, 1.0f};
-                std::cout << "Color set to Cyan\n";
-                break;
-            case GLFW_KEY_M: // 洋红色
-                currentColor = {1.0f, 0.0f, 1.0f};
-                std::cout << "Color set to Magenta\n";
-                break;
-            case GLFW_KEY_K: // 黑色
-                currentColor = {0.0f, 0.0f, 0.0f};
-                std::cout << "Color set to Black\n";
-                break;
-            case GLFW_KEY_W: // 白色
-                currentColor = {1.0f, 1.0f, 1.0f};
-                std::cout << "Color set to White\n";
-                break;
+void backup(int key,int mods, int action){
+    if (key == GLFW_KEY_Z && mods == GLFW_MOD_CONTROL &&action == GLFW_PRESS) {
+        if(!graphics.empty()){
+            graphicsbackup.push(graphics.back());
+            graphics.pop_back();
+            std::cout << "Undo last action" << std::endl;
+        }
+        else{
+            std::cout << "No actions to undo" << std::endl;
+        }
+    }
+}
+void frontup(int key, int mods, int action){
+    if (key == GLFW_KEY_Y && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
+        if(!graphicsbackup.empty()){
+            graphics.push_back(graphicsbackup.top());
+            graphicsbackup.pop();
+            std::cout << "Redo last action" << std::endl;
+        }
+        else{
+            std::cout << "No actions to redo" << std::endl;
         }
     }
 }
@@ -187,6 +172,11 @@ GLFWwindow* init(int width, int height){
         return NULL;
     }
     glfwMakeContextCurrent(window);
+    for(int i=0;i<maxn;i++){
+        for(int j=0;j<maxn;j++){
+            g[i][j]={1,1,1};//初始化像素网格为白色
+        }
+    }
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return NULL;

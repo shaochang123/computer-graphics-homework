@@ -3,16 +3,15 @@
 #ifndef GRAPH_INIT_H_INCLUED
 #include<graph/init.h>
 #endif
-bool isMousePressed = false; // 鼠标是否按下，实际上只为直线模式服务。
-Point st;//直线初始点st
 // Bresenham直线算法
-void drawLineBresenham(Point start, Point end, bool arg=false, int step =3*w) {//这里的arg是为了区分是否画虚线，为True时画虚线
+void drawLineBresenham(Point start, Point end, bool arg=false, int w =curwidth, Color color=curcolor) {//这里的arg是为了区分是否画虚线，为True时画虚线
+    const int step = 3*w;
     const int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
     const int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
     int err = dx + dy, e2,mark=1;
     while (true) {
         if((mark-1)%step==0){
-            setpixel(start.x-1,start.y-1, w);
+            setpixel(start.x,start.y,w,color);
         }
         //把对应的像素点“涂黑”
         //为何要加上 g[start.x-1][start.y-1] == 0？因为如果这个点已经被画过了，就不要再画了，否则在撤回时会导致另外一个图形出现断点
@@ -40,8 +39,8 @@ void middleLine(Point start, Point end) {
 
     for (int i = 0; i <= dx; i++) {
         // 绘制点
-        if (x >= 0 && x < maxn && y >= 0 && y < maxn && g[x][y] == 0) {
-            g[x][y] = cnt; // 将像素点涂黑
+        if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
+            g[x][y] = 1; // 将像素点涂黑
         }
 
         // 更新决策变量和坐标
@@ -62,37 +61,29 @@ void middleLine(Point start, Point end) {
     }
 }
 void drawLine(GLFWwindow *window){
-    double xpos, ypos;
     detectposition(window, xpos, ypos);
-    if(isMousePressed ==true){//如果已经按下鼠标（确定好了第一个点），那么就以按下的点和当前鼠标位置为直线的两个端点
-        drawLineBresenham(st, {static_cast<int>(xpos), static_cast<int>(ypos)});
-        // middleLine(st, {static_cast<int>(xpos), static_cast<int>(ypos)});//如果想用中点算法画，就把上一行注释掉，把这一行取消注释
+    if(curpoints.size() == 1){//如果已经按下鼠标（确定好了第一个点），那么就以按下的点和当前鼠标位置为直线的两个端点
+        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)},false,curwidth,curcolor);
+         // middleLine(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)});//如果想用中点算法画，就把上一行注释掉，把这一行取消注释
     }
     render();
 }
-void Line_Mouse_Pressed(GLFWwindow* window, int button, int action, int mods){
+void Line_Mouse_Pressed(GLFWwindow* window, int button, int action){
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 0){
-        if(isMousePressed == true){
-            drawLine(window);
-            //这里是防止画完直线后就被窗口刷新掉，所以在这里再画一次
-            Cnt2Color.push_back(currentColor);
-            cnt++;
-            isMousePressed =false;
-            st.x=0;st.y=0;
-            return;
-        }
-        isMousePressed = true;
-        double xpos,ypos;
         detectposition(window, xpos, ypos);
-        st.x=static_cast<int>(xpos);st.y=static_cast<int>(ypos);
+        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+        if(curpoints.size() == 2){
+            drawLine(window);
+            graphics.push_back({curpoints,mode,curcolor,curwidth});
+            curpoints.clear();
+        }
     }
 }
-void Line_Keyboard_Pressed(int key, int mods, int action){
+void Line_Keyboard_Pressed(int key, int action){
     if(key == GLFW_KEY_L && action == GLFW_PRESS){//切换到直线模式
-        isMousePressed = false;
         mode=0;
+        curpoints.clear(); // 清空当前点
         std::cout<<"Line Mode"<<std::endl;
-
     }
 }
 #endif

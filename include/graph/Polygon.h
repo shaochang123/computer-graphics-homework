@@ -76,7 +76,7 @@ void createEdgeTable(const std::vector<Point>& vertices) {
             int x2 = std::max(current.x, next.x);
             for (int x = x1; x <= x2; x++) {
                 if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
-                    setpixel(x,y, w);
+                    setpixel(x,y);
                 }
             }
             continue;
@@ -157,7 +157,7 @@ void sortAET(AET* &aet) {
 }
 
 // 修改填充扫描线函数
-void fillScanLine(int y, AET* aet) {
+void fillScanLine(int y, AET* aet,int w,Color color){
     AET* p = aet;
     while (p && p->next) {
         // 使用floor和ceil确保捕获所有边界像素
@@ -167,7 +167,7 @@ void fillScanLine(int y, AET* aet) {
         // 包含端点
         for (int x = x1; x <= x2; x++) {
             if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
-                setpixel(x,y,w);
+                setpixel(x,y,w,color);
             }
         }
         p = p->next->next;
@@ -207,7 +207,7 @@ void removeExpiredEdges(AET* &aet, int y) {
 }
 
 // 多边形扫描线填充
-void fillPolygon(const std::vector<Point>& vertices) {
+void fillPolygon(const std::vector<Point>& vertices,int w =curwidth,Color color=curcolor) {
     // 找到多边形的y坐标范围
     int ymin = 2*maxn;
     int ymax = -1;
@@ -234,7 +234,7 @@ void fillPolygon(const std::vector<Point>& vertices) {
         sortAET(aet);
         
         // 填充扫描线
-        fillScanLine(y, aet);
+        fillScanLine(y, aet,w,color);
         
         // 更新AET中的x值
         updateAET(aet);
@@ -253,39 +253,34 @@ void fillPolygon(const std::vector<Point>& vertices) {
 void addPointToPolygon(std::vector<Point>& vertices, int x, int y) {
     vertices.push_back({x, y});
 }
-
-// 鼠标回调
-std::vector<Point> polygonVertices;
-
 // 绘制多边形
 void drawPolygon(GLFWwindow *window) {
-    double xpos, ypos;
+    
     detectposition(window, xpos, ypos);
-    if(polygonVertices.size()==1){
-        drawLineBresenham(polygonVertices[0], {static_cast<int>(xpos), static_cast<int>(ypos)});
+    if(curpoints.size()==1){
+        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)});
     }
-    else if(polygonVertices.size()>=2){
-        polygonVertices.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-        fillPolygon(polygonVertices);
-        polygonVertices.pop_back();
+    else if(curpoints.size()>=2){
+        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+        fillPolygon(curpoints);
+        curpoints.pop_back();
     }
     render();//必须写上，不然切换后立马黑屏
 }
 
-void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action, int mods) {
-    if (mode!=3) return;
-    
+void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
+    if (mode!=4) return;
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double xpos, ypos;
         detectposition(window, xpos, ypos);
-        addPointToPolygon(polygonVertices, static_cast<int>(xpos), static_cast<int>(ypos));
+        addPointToPolygon(curpoints, static_cast<int>(xpos), static_cast<int>(ypos));
     } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
         // 右键闭合多边形
-        if (polygonVertices.size() >= 2) {
+        if (curpoints.size() >= 2) {
             drawPolygon(window);//这里加上，和画直线一样，不然画完之后立马就没
-            Cnt2Color.push_back(currentColor);
-            cnt++;
-            polygonVertices.clear();
+            detectposition(window, xpos, ypos);
+            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+            graphics.push_back({curpoints,mode,curcolor,curwidth});
+            curpoints.clear();
         }
         else{
             std::cout << "Polygon must have at least 3 vertices." << std::endl;
@@ -294,10 +289,10 @@ void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action, int mods)
 }
 
 // 键盘回调
-void Polygon_Keyboard_Pressed(int key, int mods, int action) {
+void Polygon_Keyboard_Pressed(int key,  int action) {
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-        mode = 3; // 设置为多边形模式
-        polygonVertices.clear();
+        mode = 4; // 设置为多边形模式
+        curpoints.clear(); // 清空当前点
         std::cout << "Polygon Mode" << std::endl;
     }
 }

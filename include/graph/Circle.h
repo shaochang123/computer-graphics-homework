@@ -6,10 +6,8 @@
 #ifndef GRAPH_Line_H_INCLUED
 #include<graph/Line.h>
 #endif
-uint8_t ArcStep = 0;//绘制圆弧的步骤
-Point Arco, ArcA;//圆弧的圆心和圆弧上的一个点
 // 圆弧绘制算法
-void checkAndDraw(int px, int py, Point center, double startRad, double endRad) {
+void checkAndDraw(int px, int py, Point center, double startRad, double endRad,int w,Color color) {
     if (px < 0 || px >= maxn || py < 0 || py >= maxn) return;
     int dx = px - center.x;
     int dy = center.y - py;
@@ -18,23 +16,23 @@ void checkAndDraw(int px, int py, Point center, double startRad, double endRad) 
     bool inArc = (theta >= startRad && theta <= endRad) || //在起始角度和终止角度之间
                 (startRad > endRad && (theta >= startRad || theta <= endRad));//起始角度到终止角度跨越了0度，就要特殊考虑
     
-    if (inArc)setpixel(px,py,w);
+    if (inArc)setpixel(px,py,w,color);
 }
 // 优化后的圆弧绘制算法
-void drawarc(Point center, int r, double startRad, double endRad) {
+void drawarc(Point center, int r, double startRad, double endRad, int w=curwidth, Color color=curcolor) {
     int x = 0, y = r;
     int d = 1 - r;
     
     while (x <= y) {
         //这里按照象限分了八个区域，更方便处理
-        checkAndDraw(center.x + x, center.y + y, center, startRad, endRad);
-        checkAndDraw(center.x - x, center.y + y, center, startRad, endRad);
-        checkAndDraw(center.x + x, center.y - y, center, startRad, endRad);
-        checkAndDraw(center.x - x, center.y - y, center, startRad, endRad);
-        checkAndDraw(center.x + y, center.y + x, center, startRad, endRad);
-        checkAndDraw(center.x - y, center.y + x, center, startRad, endRad);
-        checkAndDraw(center.x + y, center.y - x, center, startRad, endRad);
-        checkAndDraw(center.x - y, center.y - x, center, startRad, endRad);
+        checkAndDraw(center.x + x, center.y + y, center, startRad, endRad,w,color);
+        checkAndDraw(center.x - x, center.y + y, center, startRad, endRad,w,color);
+        checkAndDraw(center.x + x, center.y - y, center, startRad, endRad,w,color);
+        checkAndDraw(center.x - x, center.y - y, center, startRad, endRad,w,color);
+        checkAndDraw(center.x + y, center.y + x, center, startRad, endRad,w,color);
+        checkAndDraw(center.x - y, center.y + x, center, startRad, endRad,w,color);
+        checkAndDraw(center.x + y, center.y - x, center, startRad, endRad,w,color);
+        checkAndDraw(center.x - y, center.y - x, center, startRad, endRad,w,color);
         
         if (d < 0) {
             d += 2 * x + 3;
@@ -47,45 +45,43 @@ void drawarc(Point center, int r, double startRad, double endRad) {
 }
 // 圆弧模式下绘制像素网格
 void drawArc(GLFWwindow *window){
-    double xpos, ypos;
     detectposition(window, xpos, ypos);
-    if(ArcStep==1){
-        drawLineBresenham(Arco, {static_cast<int>(xpos), static_cast<int>(ypos)},true);//最后的参数变为true，表示画虚线
+    if(curpoints.size()==1){
+        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)},true);//最后的参数变为true，表示画虚线
     }
-    else if(ArcStep==2){
-        double r=sqrt((ArcA.x-Arco.x)*(ArcA.x-Arco.x)+(ArcA.y-Arco.y)*(ArcA.y-Arco.y));//半径
-        double startRad = atan2(Arco.y - ArcA.y, ArcA.x - Arco.x);//起始角度
-        double endRad = atan2(Arco.y - ypos, xpos - Arco.x);//终止角度
+    else if(curpoints.size()==2){
+        double r=sqrt((curpoints[1].x-curpoints[0].x)*(curpoints[1].x-curpoints[0].x)+(curpoints[1].y-curpoints[0].y)*(curpoints[1].y-curpoints[0].y));//半径
+        double startRad = atan2(curpoints[0].y - curpoints[1].y, curpoints[1].x - curpoints[0].x);
+        double endRad = atan2(curpoints[0].y - ypos, xpos - curpoints[0].x);
         if (startRad < 0) startRad += 2 * M_PI;//保证角度在0到2π之间
         if(endRad < 0) endRad += 2*M_PI;//保证角度在0到2π之间
-        drawarc(Arco, r, startRad, endRad);
+        drawarc(curpoints[0], r, startRad, endRad,curwidth);
     }
     render();
 }
-void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action, int mods){
+void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1){
-        if(ArcStep==0){//确定圆心
-            double xpos, ypos;
+        if(curpoints.size()==0){
             detectposition(window, xpos, ypos);
-            Arco.x=static_cast<int>(xpos);Arco.y=static_cast<int>(ypos);
+            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
         }
-        else if(ArcStep==1){//确定圆弧上的一个点(固定半径)
-            double xpos, ypos;
+        else if(curpoints.size()==1){//确定圆弧上的一个点(固定半径)
             detectposition(window, xpos, ypos);
-            ArcA.x=static_cast<int>(xpos);ArcA.y=static_cast<int>(ypos);
+            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
         }
-        else if(ArcStep==2){//圆弧画好后，cnt++
+        else if(curpoints.size()==2){
             drawArc(window);
-            Cnt2Color.push_back(currentColor);//绑定对应颜色
-            cnt++;
+            detectposition(window, xpos, ypos);
+            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
+            graphics.push_back({curpoints,mode,curcolor,curwidth});
+            curpoints.clear();
         } 
-        ArcStep=(ArcStep+1)%3;//每次点击左键，ArcStep+1，画完了重置为0
     }
 }
-void Circle_Keyboard_Pressed(int key, int mods, int action){
+void Circle_Keyboard_Pressed(int key, int action){
     if(key == GLFW_KEY_C && action == GLFW_PRESS){//切换到圆弧模式
-        ArcStep = 0;
         mode=1;
+        curpoints.clear(); // 清空当前点
         std::cout<<"Circle Mode"<<std::endl;
     }
 }
