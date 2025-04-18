@@ -89,7 +89,7 @@ void ChangeWidth(int key,int action){
             std::cout << "Line width increased to: " << curwidth << std::endl;
         }
         else {
-            graphics[ChooseIdx].width++;
+            if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width++;
             std::cout << "Line width increased to: " << graphics[ChooseIdx].width << std::endl;
         }
         
@@ -101,7 +101,7 @@ void ChangeWidth(int key,int action){
         }
         else{
             if(graphics[ChooseIdx].width>1){
-                graphics[ChooseIdx].width--;
+                if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width--;
                 std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
             }
         }
@@ -110,17 +110,17 @@ void ChangeWidth(int key,int action){
 void ChangeColor(int key,int action){
     if(key == GLFW_KEY_R && action == GLFW_PRESS) {
         if(mode!=-1)curcolor = {1.0f, 0.0f, 0.0f}; // 红色
-        else graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
         std::cout << "Color changed to red" << std::endl;
     }
     else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
         if(mode!=-1)curcolor = {0.0f, 1.0f, 0.0f}; // 绿色
-        else graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
         std::cout << "Color changed to green" << std::endl;
     }
     else if(key == GLFW_KEY_B && action == GLFW_PRESS) {
         if(mode!=-1)curcolor = {0.0f, 0.0f, 1.0f}; // 蓝色
-        else graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
         std::cout << "Color changed to blue" << std::endl;
     }
 }
@@ -145,6 +145,7 @@ void backup(int key,int mods, int action){
         if(!graphics.empty()){
             graphicsbackup.push(graphics.back());
             graphics.pop_back();
+            while(ChooseIdx>=graphics.size())ChooseIdx--;
             std::cout << "Undo last action" << std::endl;
         }
         else{
