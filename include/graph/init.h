@@ -25,7 +25,7 @@ struct graphic{
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
-#define maxn 200 // 定义像素网格大小
+#define maxn 600 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
 int mode=0,curwidth=1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
 double xpos,ypos;//鼠标坐标
@@ -145,7 +145,7 @@ void backup(int key,int mods, int action){
         if(!graphics.empty()){
             graphicsbackup.push(graphics.back());
             graphics.pop_back();
-            while(ChooseIdx>=graphics.size())ChooseIdx--;
+            if(ChooseIdx>=graphics.size())ChooseIdx--;
             std::cout << "Undo last action" << std::endl;
         }
         else{
