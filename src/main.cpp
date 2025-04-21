@@ -4,6 +4,7 @@
 #include<graph/Polygon.h>
 #include<graph/Crop.h>
 #include<graph/FullCircle.h>
+#include<transform/translation.h>
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     Line_Mouse_Pressed(window, button, action);
@@ -26,6 +27,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     saveImage(key,mods,action);
     ChangeColor(key,action);
     ChangeWidth(key, action);
+    Translation(window);
 }
 int main() {
     const int width = 800, height = 800;//设置窗口大小

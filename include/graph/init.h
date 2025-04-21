@@ -14,7 +14,6 @@ struct Color{
     float r,g,b;//颜色值
     Color(float _r=0.0f,float _g=0.0f,float _b=0.0f):r(_r),g(_g),b(_b){}//构造函数
 };
-
 struct graphic{
     std::vector<Point>points;//此图形的所有点
     int mode;//图形类型 0为直线
@@ -27,7 +26,7 @@ std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
 #define maxn 600 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
-int mode=0,curwidth=1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
+int mode=0,curwidth=1,ChooseIdx = -1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
 double xpos,ypos;//鼠标坐标
 #include<transform/selectgraph.h>
 void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){

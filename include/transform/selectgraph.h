@@ -3,7 +3,7 @@
 #ifndef GRAPH_INIT_H_INCLUDED
 #include <graph/init.h>
 #endif
-int ChooseIdx = -1;
+
 void ChangeSelectedGraph(int key, int action){
     if(key ==GLFW_KEY_LEFT && action == GLFW_PRESS){
         ChooseIdx = (ChooseIdx-1+graphics.size())%graphics.size();
