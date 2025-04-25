@@ -21,6 +21,7 @@ void ChangeSelectedGraph(int key, int action){
 void Select(int key,int action){
     if (key == GLFW_KEY_S  && action == GLFW_PRESS) {//切换为选择模式
         mode = -1;
+        
         ChooseIdx = 0;
         std::cout<<"start to select"<<std::endl;
     }

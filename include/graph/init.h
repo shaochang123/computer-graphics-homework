@@ -19,7 +19,10 @@ struct graphic{
     int mode;//图形类型 0为直线
     Color color={0,0,0};//图形颜色
     int width=1;//线宽
-    int dx=0,dy=0;
+    float rotationAngle = 0.0f;
+    float rotationCenterX = 0.0f; // 旋转中心X坐标
+    float rotationCenterY = 0.0f; // 旋转中心Y坐标
+    float scale = 1.0f; // 缩放因子，默认为1.0（不缩放）
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
@@ -73,14 +76,7 @@ void render(){
         }
     }
 }
-void flushwindow(){
-    // 刷新屏幕
-    for(int i=0;i<maxn;i++){
-        for(int j=0;j<maxn;j++){
-            g[i][j]={1.0,1.0,1.0};
-        }
-    }
-}
+
 void ChangeWidth(int key,int action){
     if(key == GLFW_KEY_UP && action == GLFW_PRESS) {
         if(mode!=-1){
