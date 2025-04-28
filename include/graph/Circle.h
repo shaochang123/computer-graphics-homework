@@ -74,6 +74,7 @@ void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
             graphics.push_back({curpoints,mode,curcolor,curwidth});
+           
             curpoints.clear();
         } 
     }

@@ -32,6 +32,7 @@ void Full_Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
             drawFullArc(window);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});//将当前点加入到当前图形的点中
             graphics.push_back({curpoints,mode,curcolor,curwidth});
+            
             curpoints.clear();
         }
     }

@@ -14,15 +14,38 @@ struct Color{
     float r,g,b;//颜色值
     Color(float _r=0.0f,float _g=0.0f,float _b=0.0f):r(_r),g(_g),b(_b){}//构造函数
 };
-struct graphic{
-    std::vector<Point>points;//此图形的所有点
-    int mode;//图形类型 0为直线
-    Color color={0,0,0};//图形颜色
-    int width=1;//线宽
-    float rotationAngle = 0.0f;
-    float rotationCenterX = 0.0f; // 旋转中心X坐标
-    float rotationCenterY = 0.0f; // 旋转中心Y坐标
-    float scale = 1.0f; // 缩放因子，默认为1.0（不缩放）
+// 3x3变换矩阵 (使用齐次坐标系)
+struct Matrix3x3 {
+    float m[3][3];
+    
+    // 构造单位矩阵
+    Matrix3x3() {
+        m[0][0] = 1.0f; m[0][1] = 0.0f; m[0][2] = 0.0f;
+        m[1][0] = 0.0f; m[1][1] = 1.0f; m[1][2] = 0.0f;
+        m[2][0] = 0.0f; m[2][1] = 0.0f; m[2][2] = 1.0f;
+    }
+    
+    // 矩阵乘法
+    Matrix3x3 operator*(const Matrix3x3& other) const {
+        Matrix3x3 result;
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                result.m[i][j] = 0.0f;
+                for (int k = 0; k < 3; ++k) {
+                    result.m[i][j] += m[i][k] * other.m[k][j];
+                }
+            }
+        }
+        return result;
+    }
+};
+// 然后再定义使用它们的结构体
+struct graphic {
+    std::vector<Point> points;      // 此图形的所有点
+    int mode;                       // 图形类型
+    Color color = {0, 0, 0};        // 图形颜色
+    int width = 1;                  // 线宽
+    Matrix3x3 transform = Matrix3x3();  // 初始化为单位矩阵
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
@@ -137,6 +160,7 @@ void saveImage(int key, int mods, int action){
 }
 void backup(int key,int mods, int action){
     if (key == GLFW_KEY_Z && mods == GLFW_MOD_CONTROL &&action == GLFW_PRESS) {
+        
         if(!graphics.empty()){
             graphicsbackup.push(graphics.back());
             graphics.pop_back();
@@ -182,5 +206,25 @@ GLFWwindow* init(int width, int height){
     // 初始化投影
     framebuffer_size_callback(window, width, height);
     return window;
+}
+// 应用变换矩阵到点
+Point applyTransform(const Point& p, const Matrix3x3& transform) {
+    // 将点转换为齐次坐标
+    float x = p.x;
+    float y = p.y;
+    float w = 1.0f;
+    
+    // 应用变换矩阵
+    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
+    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
+    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
+    
+    // 齐次坐标归一化（除以w）
+    if (newW != 0.0f) {
+        newX /= newW;
+        newY /= newW;
+    }
+    
+    return {static_cast<int>(newX), static_cast<int>(newY)};
 }
 #endif // GRAPH_INIT_H_INCLUDED

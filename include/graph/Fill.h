@@ -31,6 +31,7 @@ void Fill_Mouse_Pressed(GLFWwindow* window, int button, int action){
         detectposition(window, xpos, ypos);
         FillGraph({static_cast<int>(xpos),static_cast<int>(ypos)});//填充算法
         graphics.push_back({curpoints,mode,curcolor,1});//将当前图形加入到图形列表中
+       
         curpoints.clear();//清空当前图形的点
     }
 }

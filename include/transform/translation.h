@@ -1,158 +1,183 @@
 #ifndef TRANSFORM_TRANSLATION_H
 #define TRANSFORM_TRANSLATION_H
-#ifndef CAL_MATRIX_H
-#include "cal/matrix.h"
-#endif
 #ifndef GRAPH_INIT_H_INCLUED
 #include<graph/init.h>
 #endif
 #include <cmath>
-
-// 应用旋转矩阵到一个点
-void rotatePoint(float& x, float& y, float xcenter, float ycenter, float angle) {
-    // 将角度转换为弧度
-    float radian = angle * M_PI / 180.0f;
-    
-    // 计算三角函数值（避免重复计算）
-    float cosAngle = cosf(radian);
-    float sinAngle = sinf(radian);
-    
-    // 保存原始坐标
-    float xOrig = x;
-    float yOrig = y;
-    
-    // 使用标准的旋转公式：
-    // 1. 将点平移到以旋转中心为原点的坐标系
-    // 2. 应用旋转
-    // 3. 平移回原始坐标系
-    x = xcenter + (xOrig - xcenter) * cosAngle - (yOrig - ycenter) * sinAngle;
-    y = ycenter + (xOrig - xcenter) * sinAngle + (yOrig - ycenter) * cosAngle;
+// 创建平移矩阵
+Matrix3x3 createTranslationMatrix(float dx, float dy) {
+    Matrix3x3 mat;
+    mat.m[0][0] = 1.0f; mat.m[0][1] = 0.0f; mat.m[0][2] = dx;
+    mat.m[1][0] = 0.0f; mat.m[1][1] = 1.0f; mat.m[1][2] = dy;
+    mat.m[2][0] = 0.0f; mat.m[2][1] = 0.0f; mat.m[2][2] = 1.0f;
+    return mat;
 }
 
-// 修改旋转函数，仅更新角度和中心点，不修改原始坐标
+// 创建旋转矩阵（围绕指定中心点旋转）
+Matrix3x3 createRotationMatrix(float centerX, float centerY, float angleDegrees) {
+    // 首先平移到原点
+    Matrix3x3 toOrigin = createTranslationMatrix(-centerX, -centerY);
+    
+    // 然后旋转
+    float angleRadians = angleDegrees * M_PI / 180.0f;
+    float cosA = cosf(angleRadians);
+    float sinA = sinf(angleRadians);
+    
+    Matrix3x3 rotate;
+    rotate.m[0][0] = cosA;  rotate.m[0][1] = -sinA; rotate.m[0][2] = 0.0f;
+    rotate.m[1][0] = sinA;  rotate.m[1][1] = cosA;  rotate.m[1][2] = 0.0f;
+    rotate.m[2][0] = 0.0f;  rotate.m[2][1] = 0.0f;  rotate.m[2][2] = 1.0f;
+    
+    // 最后平移回原来的位置
+    Matrix3x3 fromOrigin = createTranslationMatrix(centerX, centerY);
+    
+    // 组合变换：先平移到原点，然后旋转，再平移回原位置
+    return fromOrigin * rotate * toOrigin;
+}
+
+// 创建缩放矩阵（围绕指定中心点缩放）
+Matrix3x3 createScalingMatrix(float centerX, float centerY, float scale) {
+    // 首先平移到原点
+    Matrix3x3 toOrigin = createTranslationMatrix(-centerX, -centerY);
+    
+    // 然后缩放
+    Matrix3x3 scaling;
+    scaling.m[0][0] = scale; scaling.m[0][1] = 0.0f;  scaling.m[0][2] = 0.0f;
+    scaling.m[1][0] = 0.0f;  scaling.m[1][1] = scale; scaling.m[1][2] = 0.0f;
+    scaling.m[2][0] = 0.0f;  scaling.m[2][1] = 0.0f;  scaling.m[2][2] = 1.0f;
+    
+    // 最后平移回原来的位置
+    Matrix3x3 fromOrigin = createTranslationMatrix(centerX, centerY);
+    
+    // 组合变换：先平移到原点，然后缩放，再平移回原位置
+    return fromOrigin * scaling * toOrigin;
+}
 void RotateGraphic(GLFWwindow* window, double yOffset) {
     if (mode != -1 || ChooseIdx < 0 || ChooseIdx >= graphics.size())
         return;
     
-    // 更新旋转角度
-    graphics[ChooseIdx].rotationAngle += static_cast<float>(yOffset * 5.0f); // 控制旋转速度
+    // 计算旋转角度
+    float angle = static_cast<float>(yOffset * 5.0f);
     
-    // 如果角度超过360度，归一化到0-360度范围
-    if (graphics[ChooseIdx].rotationAngle >= 360.0f)
-        graphics[ChooseIdx].rotationAngle -= 360.0f;
-    if (graphics[ChooseIdx].rotationAngle < 0.0f)
-        graphics[ChooseIdx].rotationAngle += 360.0f;
-    
-    // 计算并储存旋转中心点
-    float xcenter = 0.0f, ycenter = 0.0f;
+    // 计算图形中心作为旋转中心
+    float centerX = 0.0f, centerY = 0.0f;
     
     // 根据图形类型确定旋转中心
     if (graphics[ChooseIdx].mode == 2 || graphics[ChooseIdx].mode == 1) {
-        // 对于圆和圆弧，使用第一个点作为旋转中心（圆心）
-        xcenter = graphics[ChooseIdx].points[0].x;
-        ycenter = graphics[ChooseIdx].points[0].y;
+        centerX = graphics[ChooseIdx].points[0].x;
+        centerY = graphics[ChooseIdx].points[0].y;
     } else {
-        // 对于其他图形，使用所有点的平均位置作为旋转中心
         for (const auto& point : graphics[ChooseIdx].points) {
-            xcenter += point.x;
-            ycenter += point.y;
+            centerX += point.x;
+            centerY += point.y;
         }
-        xcenter /= graphics[ChooseIdx].points.size();
-        ycenter /= graphics[ChooseIdx].points.size();
+        centerX /= graphics[ChooseIdx].points.size();
+        centerY /= graphics[ChooseIdx].points.size();
     }
+
+    Point newP = applyTransform({static_cast<int>(centerX),static_cast<int>(centerY)},graphics[ChooseIdx].transform);
+    centerX = newP.x;
+    centerY = newP.y;
+    // 创建旋转矩阵
+    Matrix3x3 rotationMatrix = createRotationMatrix(centerX, centerY, angle);
+    // 应用旋转矩阵（新变换 = 当前变换矩阵 * 新操作矩阵）
+    graphics[ChooseIdx].transform = rotationMatrix * graphics[ChooseIdx].transform;
+  
+}
+
+void TranslateGraphic(float deltaX, float deltaY) {
+    if (mode != -1 || ChooseIdx < 0 || ChooseIdx >= graphics.size())
+        return;
     
-    // 保存旋转中心
-    graphics[ChooseIdx].rotationCenterX = xcenter;
-    graphics[ChooseIdx].rotationCenterY = ycenter;
-    
+    // 创建平移矩阵
+    Matrix3x3 translationMatrix = createTranslationMatrix(deltaX, deltaY);
+    graphics[ChooseIdx].transform = translationMatrix * graphics[ChooseIdx].transform;
     
 }
 
-// 获取旋转后的点坐标（不修改原始点）
-Point getRotatedPoint(const Point& point, float centerX, float centerY, float angle) {
-    if (angle == 0.0f) return point; // 如果没有旋转，直接返回原点
+void ScaleGraphic(GLFWwindow* window, float scaleFactor) {
+    if (mode != -1 || ChooseIdx < 0 || ChooseIdx >= graphics.size())
+        return;
     
-    // 将角度转换为弧度
-    float radian = angle * M_PI / 180.0f;
+    // 计算图形中心作为缩放中心
+    float centerX = 0.0f, centerY = 0.0f;
     
-    // 计算三角函数值
-    float cosAngle = cosf(radian);
-    float sinAngle = sinf(radian);
+    if (graphics[ChooseIdx].mode == 2 || graphics[ChooseIdx].mode == 1) {
+        centerX = graphics[ChooseIdx].points[0].x;
+        centerY = graphics[ChooseIdx].points[0].y;
+    } else {
+        for (const auto& point : graphics[ChooseIdx].points) {
+            centerX += point.x;
+            centerY += point.y;
+        }
+        centerX /= graphics[ChooseIdx].points.size();
+        centerY /= graphics[ChooseIdx].points.size();
+    }
+    Point newP = applyTransform({static_cast<int>(centerX),static_cast<int>(centerY)},graphics[ChooseIdx].transform);
+    centerX = newP.x;
+    centerY = newP.y;
+    // 创建缩放矩阵
+    Matrix3x3 scalingMatrix = createScalingMatrix(centerX, centerY, scaleFactor);
     
-    // 计算旋转后的坐标
-    Point rotated;
-    rotated.x = centerX + (point.x - centerX) * cosAngle - (point.y - centerY) * sinAngle;
-    rotated.y = centerY + (point.x - centerX) * sinAngle + (point.y - centerY) * cosAngle;
-    
-    return rotated;
+    graphics[ChooseIdx].transform = scalingMatrix * graphics[ChooseIdx].transform;
 }
-
-
-
-// 鼠标滚轮回调函数
+// 鼠标滚轮回调函数 - 用于旋转图形
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    if (mode == -1 && ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+    // 只在选择模式下处理滚轮事件
+    if (mode == -1) {
         RotateGraphic(window, yoffset);
     }
 }
-
 void Translation(GLFWwindow* window) {
     if (mode != -1) return;
     
     if (ChooseIdx < 0 || ChooseIdx >= graphics.size()) return;
     
     bool moved = false;
+    float deltaX = 0.0f, deltaY = 0.0f;
+    
+    // 处理平移按键
     if (glfwGetKey(window, GLFW_KEY_KP_1) == GLFW_PRESS) {
-        for (int i = 0; i < graphics[ChooseIdx].points.size(); i++) {
-            graphics[ChooseIdx].points[i].x -= 1;
-        }
-        graphics[ChooseIdx].rotationCenterX -= 1; // 更新旋转中心
+        deltaX = -1.0f;
         moved = true;
     }
-    if (glfwGetKey(window, GLFW_KEY_KP_3) == GLFW_PRESS) {
-        for (int i = 0; i < graphics[ChooseIdx].points.size(); i++) {
-            graphics[ChooseIdx].points[i].x += 1;
-        }
-        graphics[ChooseIdx].rotationCenterX += 1; // 更新旋转中心
+    else if (glfwGetKey(window, GLFW_KEY_KP_3) == GLFW_PRESS) {
+        deltaX = 1.0f;
         moved = true;
     }
+    
     if (glfwGetKey(window, GLFW_KEY_KP_5) == GLFW_PRESS) {
-        for (int i = 0; i < graphics[ChooseIdx].points.size(); i++) {
-            graphics[ChooseIdx].points[i].y += 1;
-        }
-        graphics[ChooseIdx].rotationCenterY += 1; // 更新旋转中心
+        deltaY = 1.0f;
         moved = true;
     }
-    if (glfwGetKey(window, GLFW_KEY_KP_2) == GLFW_PRESS) {
-        for (int i = 0; i < graphics[ChooseIdx].points.size(); i++) {
-            graphics[ChooseIdx].points[i].y -= 1;
-        }
-        graphics[ChooseIdx].rotationCenterY -= 1; // 更新旋转中心
+    else if (glfwGetKey(window, GLFW_KEY_KP_2) == GLFW_PRESS) {
+        deltaY = -1.0f;
         moved = true;
     }
     
-    // 如果移动了，重新计算旋转中心
-    if (moved && graphics[ChooseIdx].rotationAngle != 0.0f) {
-        // 更新旋转中心点（仅当图形有旋转时才需要）
-        float xcenter = 0.0f, ycenter = 0.0f;
-        
-        if (graphics[ChooseIdx].mode == 2 || graphics[ChooseIdx].mode == 1) {
-            xcenter = graphics[ChooseIdx].points[0].x;
-            ycenter = graphics[ChooseIdx].points[0].y;
-        } else {
-            for (const auto& point : graphics[ChooseIdx].points) {
-                xcenter += point.x;
-                ycenter += point.y;
-            }
-            xcenter /= graphics[ChooseIdx].points.size();
-            ycenter /= graphics[ChooseIdx].points.size();
-        }
-        
-        graphics[ChooseIdx].rotationCenterX = xcenter;
-        graphics[ChooseIdx].rotationCenterY = ycenter;
+    // 如果有平移操作
+    if (moved && (deltaX != 0.0f || deltaY != 0.0f)) {
+        TranslateGraphic(deltaX, deltaY);
     }
     
+    // 处理缩放按键
+    if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
+        ScaleGraphic(window, 1.05f);
+        moved = true;
+    }
     
+    if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
+        ScaleGraphic(window, 0.95f);
+        moved = true;
+    }
+    
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) {
+        // 重置变换矩阵为单位矩阵
+        Matrix3x3 identityMatrix;
+        graphics[ChooseIdx].transform = Matrix3x3();
+        printf("reset\n");
+        moved = true;
+    }
 }
 
 // 判断点是否在直线上（使用距离判断）
@@ -305,5 +330,7 @@ void SelectGraphByClick(GLFWwindow* window, int button, int action) {
         printf("no graph is chooesn\n");
     }
 }
+
+
 
 #endif
