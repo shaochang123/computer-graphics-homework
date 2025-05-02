@@ -24,6 +24,9 @@ SRC		:= src
 # define include directory
 INCLUDE	:= include
 
+# define resource directory
+RESOURCE := resource
+
 # define lib directory
 LIB		:= lib
 LIBRARIES	:= -lopengl32 -lglad -lglfw3dll      # add
@@ -35,6 +38,8 @@ LIBDIRS		:= $(LIB)
 FIXPATH = $(subst /,\,$1)
 RM			:= del /q /f
 MD	:= mkdir
+CP  := copy
+XCOPY := xcopy /e /i /y
 else
 MAIN	:= main
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
@@ -43,6 +48,8 @@ LIBDIRS		:= $(shell find $(LIB) -type d)
 FIXPATH = $1
 RM = rm -f
 MD	:= mkdir -p
+CP  := cp
+XCOPY := cp -r
 endif
 
 # define any directories containing header files other than /usr/include
@@ -60,6 +67,9 @@ OBJECTS		:= $(SOURCES:.cpp=.o)
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
 
+# define resource files
+RESOURCE_FILES := $(shell if exist $(RESOURCE) dir /b /s $(RESOURCE) | findstr /v /i ".git")
+
 #
 # The following part of the makefile is generic; it can be used to
 # build any executable just by changing the definitions above and by
@@ -67,12 +77,20 @@ DEPS		:= $(OBJECTS:.o=.d)
 #
 
 OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
+OUTPUTRES   := $(call FIXPATH,$(OUTPUT)/$(RESOURCE))
 
-all: $(OUTPUT) $(MAIN)
+all: $(OUTPUT) $(MAIN) resources
 	@echo Executing 'all' complete!
 
 $(OUTPUT):
 	$(MD) $(OUTPUT)
+
+resources: $(OUTPUT)
+	@if exist $(RESOURCE) ( \
+		if not exist $(OUTPUTRES) $(MD) $(OUTPUTRES) \
+		& $(XCOPY) $(call FIXPATH,$(RESOURCE)) $(OUTPUTRES) \
+	)
+	@echo Resource files copied!
 
 $(MAIN): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS) $(LIBRARIES) -lwinmm
@@ -88,11 +106,12 @@ $(MAIN): $(OBJECTS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
-.PHONY: clean
+.PHONY: clean resources
 clean:
 	$(RM) $(OUTPUTMAIN)
 	$(RM) $(call FIXPATH,$(OBJECTS))
 	$(RM) $(call FIXPATH,$(DEPS))
+	if exist $(OUTPUTRES) rd /s /q $(OUTPUTRES)
 	@echo Cleanup complete!
 
 run: all

@@ -11,6 +11,8 @@
 #include <fstream>
 #include<cstdlib>
 #include<ctime>
+#include<thread>
+#include<atomic>
 void initRandom() {
     srand(static_cast<unsigned>(time(nullptr)));
 }
@@ -85,7 +87,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);//设置正交投影
 }
 // 渲染函数，将g数组的像素网格渲染到窗口上
-void render(){
+void inline render(){
+    
     glClear(GL_COLOR_BUFFER_BIT);//清空颜色缓冲区
     glMatrixMode(GL_MODELVIEW);//设置模型视图矩阵
     glLoadIdentity();//重置当前的模型视图矩阵

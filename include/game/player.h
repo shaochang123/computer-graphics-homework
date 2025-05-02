@@ -1,86 +1,121 @@
 #ifndef GAME_PLAYER_H_INCLUDED
 #define GAME_PLAYER_H_INCLUDED
-#ifndef GRAPH_INIT_H_INCLUDED
-#include<graph/init.h>
+#ifndef game_INIT_H_INCLUDED
+#include<game/init.h>
 #endif
 #ifndef GAME_AUDIO_H
 #include<game/audio.h>
 #endif
+#ifndef GAME_ATTACK_H
+#include<game/attack.h>
+#endif
 Audio playaudio;
 class player{
-    private:
-    float speed;
-    
     public:
+    float speed;
     char stat;//status为状态
-    float x,y,hp;
-    player(int hp=100,int x=maxn/2,int y=maxn/2 -100,float speed=1.5,char status='r'):hp(hp),x(x),y(y),speed(speed),stat(status){}//构造函数
-    // 在 init.h 中添加渲染 player 的函数
+    float x,y,hp,oldx,oldy;
+    bool CanJump = true;//是否可以跳跃
+    float vy = 0.0f;         // 垂直速度
+    bool isJumping = false;  // 是否正在跳跃
+    float jumpMaxY = maxn/2 + 80; // 最大跳跃高度（可调整）
+    player(int hp=100,int x=maxn/2,int y=maxn/2 -100,float speed=2.0,char status='r'):hp(hp),x(x),y(y),oldx(x),oldy(y),speed(speed),stat(status){}//构造函数
     void renderPlayer();
-    void switchstat();
+    void switchstat(char statt);
     void move(GLFWwindow* glWindow);
+    void drophp();
+    void iscollided();
+    
 };
 void player::renderPlayer(){
     Color color = {1.0, 0.0, 0.0}; // 红色
     if(stat=='b')color = {0.0, 0.0, 1.0}; // 蓝色
-    Color white = {1.0, 1.0, 1.0}; // 白色
     
-    for(int i=x-4;i<=x+4;i++){
-        setpixel(i,y,1,color);
-    }
-    
-    for(int i=x-3;i<=x+3;i++){
-        setpixel(i,y-1,1,color);
-        
-            
-    }
-    
-    for(int i=x-2;i<=x+2;i++){
-        setpixel(i,y-2,1,color);
-        
-            
-    }
-    
-    for(int i=x-1;i<=x+1;i++){
-        setpixel(i,y-3,1,color);
-        
-           
-    }
-    
-    for(int i=x-3;i<=x+3;i++)if(i!=x){
-        setpixel(i,y+1,1,color);
-      
-    }
-    
-    setpixel(x-2,y+2,1,color);
-    setpixel(x+2,y+2,1,color);
-    setpixel(x,y-4,1,color);
-    
-    
+    for(int i=x-4;i<=x+4;i++){setpixel(i,y,1,color);}
+    for(int i=x-3;i<=x+3;i++){setpixel(i,y-1,1,color);}
+    for(int i=x-2;i<=x+2;i++){setpixel(i,y-2,1,color);  }
+    for(int i=x-1;i<=x+1;i++){setpixel(i,y-3,1,color);  }
+    for(int i=x-3;i<=x+3;i++)if(i!=x){setpixel(i,y+1,1,color);}
+    setpixel(x-2,y+2,1,color);setpixel(x+2,y+2,1,color);setpixel(x,y-4,1,color);
+}
+void player::drophp(){
+    hp--;
+    playaudio.playSound("resource/hit.wav"); // 播放音效
 }
 void player::move(GLFWwindow* window){
-    int oldX=x,oldY=y;
-    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && y+speed<=248-3){
-        y+=speed;
+    oldx=x;
+    oldy=y;
+    const float gravity = -0.2f;      // 重力加速度（可调整）
+    const float jumpSpeed = speed*2.8;    // 跳跃初速度（可调整）
+    const float groundY = DMenu + 7;  // 地面y坐标
+    if(stat == 'b'){
+        // 跳跃
+        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !isJumping && y <= UMenu-5 && CanJump){
+            vy = jumpSpeed;
+            isJumping = true;
+            CanJump = false;
+        }
+        // 松开上键，立刻下落
+        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && isJumping && vy > 0){
+            vy = 0.0f; // 立即下落
+        }
+        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE){
+            CanJump = true; // 允许再次跳跃
+        }
+        // 应用重力和竖直速度
+        if(isJumping){
+            y += vy;
+            
+            vy += gravity;
+            if(y <= groundY){ // 落地
+                y = groundY;
+                vy = 0;
+                isJumping = false;
+            }
+        }
+        // 左右移动
+        if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && x-speed>=LMenu+7){
+            x -= speed;
+            
+        }
+        if(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && x+speed<=RMenu-7){
+            x += speed;
+            
+        }
     }
-    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && y-speed>=104+3){
-        y-=speed;
+    else{
+        // 红色模式，原有逻辑
+        if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && x-speed>=LMenu+7){
+            x -= speed;
+        }
+        if(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && x+speed<=RMenu-7){
+            x += speed;
+        }
+        if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && y-speed>=DMenu+7){
+            y -= speed;
+        }
+        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && y+speed<=UMenu-5){
+            y += speed;
+        }
     }
-    if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && x-speed>=54+3){
-        x-=speed;
-    }
-    if(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && x+speed<=446-3){
-        x+=speed;
-    }
-    
+}
+void player::iscollided(){
     // 连续碰撞检测 - 检查移动路径上是否有骨头
     // 沿着移动路径采样多个点，检查是否与骨头碰撞
-    int steps = std::max(abs(x - oldX), abs(y - oldY)) * 2; // 采样点数量
+    if(x==oldx&&y==oldy){//没动，如果还是原来的方案，不会有采样点
+        int oldX=oldx;
+        int oldY=oldy;
+        if(g[oldY][oldX].r>0.9f&&g[oldY][oldX].g>0.9f&&g[oldY][oldX].b>0.9f){
+            drophp();
+        }
+        return;
+    }
+    int steps = std::max(abs(x - oldx), abs(y - oldy)) * 3; // 采样点数量
     if (steps > 1) {
         for (int i = 1; i < steps; i++) {
             float t = (float)i / steps;
-            int checkX = oldX + (x - oldX) * t;
-            int checkY = oldY + (y - oldY) * t;
+            int checkX = oldx + (x - oldx) * t;
+            int checkY = oldy + (y - oldy) * t;
             
             // 检查此点是否与骨头碰撞
             bool pathCollided = false;
@@ -99,16 +134,22 @@ void player::move(GLFWwindow* window){
             }
             
             if (pathCollided) {
-                playaudio.playSound("resource/hit.wav"); // 播放音效
+                drophp();
                 hp--;
                 break;
             }
         }
     }
 }
-void player::switchstat(){
+void player::switchstat(char statt){//转换模式
     playaudio.playSound("resource/switch.wav"); // 播放音效
-    if(stat=='r')stat='b';
-    else stat='r';
+    if(statt=='b'){
+        stat=statt;
+        y = DMenu + 7;
+    }
+    if(statt=='r'){
+        stat=statt;
+    }
 }
+player you;//玩家
 #endif // GAME_PLAYER_H_INCLUDED
