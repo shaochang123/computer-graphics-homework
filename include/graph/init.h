@@ -4,10 +4,16 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <math.h>
+#include <map>
 #include <queue>
 #include <vector>
 #include <stack>
 #include <fstream>
+#include<cstdlib>
+#include<ctime>
+void initRandom() {
+    srand(static_cast<unsigned>(time(nullptr)));
+}
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;};
 struct Color{
@@ -17,7 +23,6 @@ struct Color{
 // 3x3变换矩阵 (使用齐次坐标系)
 struct Matrix3x3 {
     float m[3][3];
-    
     // 构造单位矩阵
     Matrix3x3() {
         m[0][0] = 1.0f; m[0][1] = 0.0f; m[0][2] = 0.0f;
@@ -50,7 +55,7 @@ struct graphic {
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
-#define maxn 600 // 定义像素网格大小
+#define maxn 500 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
 int mode=0,curwidth=1,ChooseIdx = -1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
 double xpos,ypos;//鼠标坐标
@@ -186,7 +191,7 @@ void frontup(int key, int mods, int action){
 }
 GLFWwindow* init(int width, int height){
     if (!glfwInit()) return NULL;
-    GLFWwindow* window = glfwCreateWindow(width, height, "painting toolbox", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "fight simulation", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return NULL;

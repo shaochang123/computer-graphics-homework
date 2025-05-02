@@ -75,7 +75,6 @@ void Line_Mouse_Pressed(GLFWwindow* window, int button, int action){
         if(curpoints.size() == 2){
             drawLine(window);
             graphics.push_back({curpoints,mode,curcolor,curwidth});
-           
             curpoints.clear();
         }
     }
