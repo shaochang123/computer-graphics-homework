@@ -5,6 +5,7 @@
 #include<graph/Crop.h>
 #include<graph/FullCircle.h>
 #include<transform/translation.h>
+#include<graph/bezier.h>
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     Line_Mouse_Pressed(window, button, action);
@@ -13,6 +14,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     Fill_Mouse_Pressed(window, button, action);
     Polygon_Mouse_Pressed(window, button, action);
     SelectGraphByClick(window, button, action);
+    Bezier_Mouse_Pressed(window, button, action);
+    Bezier_Edit_Mouse_Handler(window,button,action,mods);
 }
 // 键盘回调函数
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -29,6 +32,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     ChangeColor(key,action);
     ChangeWidth(key, action);
     Translation(window);
+    Bezier_Keyboard_Pressed(key, action);
 }
 void flushwindow();
 int main() {
@@ -46,11 +50,16 @@ int main() {
         else if(mode==1) drawArc(window);//渲染圆弧
         else if(mode==2) drawFullArc(window);//渲染整圆
         else if(mode==4) drawPolygon(window);//渲染填充
+        else if(mode==6) drawBezier(window);
         else render();
         flushwindow();//刷新屏幕
         glfwSwapBuffers(window);//交换缓冲区
         glfwPollEvents();//处理所有未决事件
         if(mode!=-1)ChooseIdx = -1;
+        if(mode==-1&&ChooseIdx!=-1&&graphics[ChooseIdx].mode==6&&selectedPointIndex!=-1){
+            detectposition(window, xpos, ypos);
+            graphics[ChooseIdx].points[selectedPointIndex] = {static_cast<int>(xpos), static_cast<int>(ypos)};
+        }
     }
     glfwTerminate();std::cout<<"bye\n"<<std::endl;//bye
     return 0;
@@ -126,7 +135,17 @@ void flushwindow() {
             
             fillPolygon(transformedPoints, graphics[i].width, graphics[i].color);
         }
-        
+        else if(graphics[i].mode == 6) { // Bezier曲线
+           
+            std::vector<Point> transformedPoints;
+            for (const auto& point : graphics[i].points) {
+                transformedPoints.push_back(applyTransform(point, transform));
+            }
+            for(int j=0;j<transformedPoints.size()-1;j++){
+                if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
+            }
+            drawBezierCurve(transformedPoints,graphics[i].width,graphics[i].color);
+        }
         if(i == ChooseIdx) {
             graphics[i].color = choosecolor;
         }

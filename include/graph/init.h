@@ -46,6 +46,7 @@ struct graphic {
     Color color = {0, 0, 0};        // 图形颜色
     int width = 1;                  // 线宽
     Matrix3x3 transform = Matrix3x3();  // 初始化为单位矩阵
+    int key = 0;//专属于bezier
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形

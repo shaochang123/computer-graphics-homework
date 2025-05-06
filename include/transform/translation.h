@@ -273,6 +273,36 @@ bool isPointInPolygon(const Point& point, const std::vector<Point>& vertices) {
     return inside;
 }
 
+// 判断点是否在贝塞尔曲线上
+bool isPointOnBezierCurve(const Point& clickPoint, const std::vector<Point>& controlPoints, int threshold = 5) {
+    if (controlPoints.size() < 2) return false;
+    
+    // 遍历贝塞尔曲线上的点，检查是否有点与点击位置足够接近
+    const double step = 0.0001; // 步长不要太小，否则会影响性能
+    
+    for (double t = 0; t <= 1.0; t += step) {
+        // 创建临时数组用于递归计算
+        std::vector<Point> points = controlPoints;
+        
+        // de Casteljau算法计算曲线上的点
+        for (int r = 1; r < points.size(); r++) {
+            for (int i = 0; i < points.size() - r; i++) {
+                points[i].x = (1 - t) * points[i].x + t * points[i + 1].x;
+                points[i].y = (1 - t) * points[i].y + t * points[i + 1].y;
+            }
+        }
+        
+        // 检查点击位置是否靠近曲线上的点
+        int dx = clickPoint.x - points[0].x;
+        int dy = clickPoint.y - points[0].y;
+        if ((dx * dx + dy * dy) <= threshold * threshold) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // 鼠标点击选择图形的函数
 void SelectGraphByClick(GLFWwindow* window, int button, int action) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == -1) {

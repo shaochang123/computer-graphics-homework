@@ -17,6 +17,10 @@ void ChangeSelectedGraph(int key, int action){
             if(ChooseIdx>=graphics.size()) ChooseIdx = graphics.size()-1;
         }
     }
+    if(key == GLFW_KEY_1  && mode==-1&& ChooseIdx!=-1&&graphics[ChooseIdx].mode==6){
+        graphics[ChooseIdx].key = (graphics[ChooseIdx].key+1)%4;
+        
+    }
 }
 void Select(int key,int action){
     if (key == GLFW_KEY_S  && action == GLFW_PRESS) {//切换为选择模式

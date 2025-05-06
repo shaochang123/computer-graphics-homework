@@ -1,5 +1,5 @@
-#ifndef GRAPH_FILL_H
-#define GRAPH_FILL_H
+#ifndef GRAPH_FILL_H_INCLUDED
+#define GRAPH_FILL_H_INCLUDED
 #ifndef GRAPH_INIT_H_INCLUDED
 #include<graph/init.h>
 #endif
