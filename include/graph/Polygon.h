@@ -59,7 +59,7 @@ void insertEdge(ET* &header, ET* edge) {
     p->next = edge;
 }
 
-// 创建多边形的边表
+// 修改createEdgeTable函数，增加边界检查
 void createEdgeTable(const std::vector<Point>& vertices) {
     initEdgeTable();
     
@@ -68,15 +68,26 @@ void createEdgeTable(const std::vector<Point>& vertices) {
         Point current = vertices[i];
         Point next = vertices[(i + 1) % n];
         
+        // 确保所有坐标在有效范围内
+        if (current.y < 0 || current.y >= maxn || next.y < 0 || next.y >= maxn) {
+            // 裁剪超出范围的边 - 这里简单处理为限制坐标范围
+            current.y = std::max(0, std::min(current.y, maxn-1));
+            next.y = std::max(0, std::min(next.y, maxn-1));
+            current.x = std::max(0, std::min(current.x, maxn-1));
+            next.x = std::max(0, std::min(next.x, maxn-1));
+        }
+        
         // 如果是水平边，需要特殊处理
         if (current.y == next.y) {
-            // 可以选择直接在这里填充水平线
             int y = current.y;
-            int x1 = std::min(current.x, next.x);
-            int x2 = std::max(current.x, next.x);
-            for (int x = x1; x <= x2; x++) {
-                if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
-                    setpixel(x,y);
+            if (y >= 0 && y < maxn) { // 确保y在范围内
+                int x1 = std::min(current.x, next.x);
+                int x2 = std::max(current.x, next.x);
+                x1 = std::max(0, x1); // 限制x1在有效范围内
+                x2 = std::min(maxn-1, x2); // 限制x2在有效范围内
+                
+                for (int x = x1; x <= x2; x++) {
+                    setpixel(x, y);
                 }
             }
             continue;
@@ -100,9 +111,12 @@ void createEdgeTable(const std::vector<Point>& vertices) {
             delta = (double)(current.x - next.x) / (current.y - next.y);
         }
         
-        // 确保边被正确插入，特别注意下边界
-        ET* edge = new ET(ymax, x, delta);
-        insertEdge(EdgeTable[ymin], edge);
+        // 确保ymin在有效范围内
+        if (ymin >= 0 && ymin < maxn) {
+            // 创建新边并插入边表
+            ET* edge = new ET(ymax, x, delta);
+            insertEdge(EdgeTable[ymin], edge);
+        }
     }
 }
 
@@ -157,20 +171,30 @@ void sortAET(AET* &aet) {
 }
 
 // 修改填充扫描线函数
-void fillScanLine(int y, AET* aet,int w,Color color){
+// 修改fillScanLine函数，增加边界检查
+void fillScanLine(int y, AET* aet, int w, Color color) {
+    if (y < 0 || y >= maxn) return; // 超出范围直接返回
+    
     AET* p = aet;
     while (p && p->next) {
-        // 使用floor和ceil确保捕获所有边界像素
+        // 计算填充范围，并限制在有效范围内
         int x1 = static_cast<int>(floor(p->x));
         int x2 = static_cast<int>(ceil(p->next->x));
         
-        // 包含端点
+        // 限制x范围
+        x1 = std::max(0, x1);
+        x2 = std::min(maxn-1, x2);
+        
+        // 只在有效范围内填充
         for (int x = x1; x <= x2; x++) {
-            if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
-                setpixel(x,y,w,color);
-            }
+            setpixel(x, y, w, color);
         }
+        
+        // 移动到下一对边
         p = p->next->next;
+        
+        // 安全检查，防止无效迭代
+        if (!p || !p->next) break;
     }
 }
 
@@ -206,15 +230,28 @@ void removeExpiredEdges(AET* &aet, int y) {
     }
 }
 
-// 多边形扫描线填充
-void fillPolygon(const std::vector<Point>& vertices,int w =curwidth,Color color=curcolor) {
-    // 找到多边形的y坐标范围
-    int ymin = 2*maxn;
-    int ymax = -1;
+// 修改fillPolygon函数，增强健壮性
+void fillPolygon(const std::vector<Point>& vertices, int w=curwidth, Color color=curcolor) {
+    if (vertices.empty()) return;
+    
+    // 找到多边形的y坐标范围并确保在有效范围内
+    int ymin = maxn;
+    int ymax = 0;
     for (const auto& point : vertices) {
-        ymin = std::min(ymin, point.y);
-        ymax = std::max(ymax, point.y);
+        if (point.y >= 0 && point.y < maxn) { // 只考虑有效范围内的点
+            ymin = std::min(ymin, point.y);
+            ymax = std::max(ymax, point.y);
+        }
     }
+    
+    // 如果所有点都在有效范围外，直接返回
+    if (ymin >= maxn || ymax < 0 || ymin > ymax) {
+        return;
+    }
+    
+    // 限制范围在[0,maxn-1]内
+    ymin = std::max(0, ymin);
+    ymax = std::min(maxn-1, ymax);
     
     // 创建边表
     createEdgeTable(vertices);
@@ -222,10 +259,12 @@ void fillPolygon(const std::vector<Point>& vertices,int w =curwidth,Color color=
     // 活跃边表
     AET* aet = nullptr;
     
-    // 扩展扫描范围确保覆盖所有点
-    for (int y = ymin; y <= std::min(ymax+1, maxn-1); y++) {
+    // 仅扫描有效范围
+    for (int y = ymin; y <= ymax; y++) {
         // 将新的边加入AET
-        insertToAET(aet, EdgeTable[y]);
+        if (y >= 0 && y < maxn) {
+            insertToAET(aet, EdgeTable[y]);
+        }
         
         // 移除过期的边
         removeExpiredEdges(aet, y);
@@ -234,7 +273,7 @@ void fillPolygon(const std::vector<Point>& vertices,int w =curwidth,Color color=
         sortAET(aet);
         
         // 填充扫描线
-        fillScanLine(y, aet,w,color);
+        fillScanLine(y, aet, w, color);
         
         // 更新AET中的x值
         updateAET(aet);
@@ -269,7 +308,7 @@ void drawPolygon(GLFWwindow *window) {
 }
 
 void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
-    if (mode!=4 || isinui(window) == true) return;
+    if (mode!=4 ) return;
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         detectposition(window, xpos, ypos);
         addPointToPolygon(curpoints, static_cast<int>(xpos), static_cast<int>(ypos));
@@ -280,7 +319,7 @@ void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
             graphics.push_back({curpoints,mode,curcolor,curwidth});
-            
+            getcenposition(graphics.back());
             curpoints.clear();
         }
         else{
@@ -289,13 +328,6 @@ void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
     }
 }
 
-// 键盘回调
-void Polygon_Keyboard_Pressed(int key,  int action) {
-    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-        mode = 4; // 设置为多边形模式
-        curpoints.clear(); // 清空当前点
-        std::cout << "Polygon Mode" << std::endl;
-    }
-}
+
 
 #endif

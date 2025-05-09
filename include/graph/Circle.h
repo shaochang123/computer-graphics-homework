@@ -60,7 +60,7 @@ void drawArc(GLFWwindow *window){
     render();
 }
 void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1&& isinui(window) == false){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1){
         if(curpoints.size()==0){
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
@@ -74,16 +74,9 @@ void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
             graphics.push_back({curpoints,mode,curcolor,curwidth});
-           
+            getcenposition(graphics.back());
             curpoints.clear();
         } 
-    }
-}
-void Circle_Keyboard_Pressed(int key, int action){
-    if(key == GLFW_KEY_C && action == GLFW_PRESS){//切换到圆弧模式
-        mode=1;
-        curpoints.clear(); // 清空当前点
-        std::cout<<"Circle Mode"<<std::endl;
     }
 }
 #endif

@@ -15,8 +15,9 @@ int selectedPointIndex = -1;
 
 // 检查点是否在控制点附近
 bool isNearControlPoint(const Point& mousePos, const Point& controlPoint, int threshold = CONTROL_POINT_THRESHOLD) {
-    int dx = mousePos.x - controlPoint.x;
-    int dy = mousePos.y - controlPoint.y;
+    Point control = applyTransform(controlPoint, graphics[ChooseIdx].transform);
+    int dx = mousePos.x - control.x;
+    int dy = mousePos.y - control.y;
     return (dx*dx + dy*dy) <= threshold*threshold;
 }
 
@@ -56,24 +57,18 @@ void drawBezier(GLFWwindow *window){
     if(curpoints.size()>=1)drawLineBresenham(curpoints[curpoints.size()-1],{static_cast<int>(xpos), static_cast<int>(ypos)},false,1,{1.0f,0.0f,0.0f});
     render();
 }
-void Bezier_Keyboard_Pressed(int key, int action){
-    if(key == GLFW_KEY_I && action == GLFW_PRESS){//切换到曲线模式
-        mode=6;
-        curpoints.clear(); // 清空当前点
-        std::cout<<"Bizier Mode"<<std::endl;
-    }
-}
 void Bezier_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 6 &&  isinui(window) == false){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 6){
         detectposition(window, xpos, ypos);
         curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
     }
-    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS && mode == 6&&isinui(window) == false){
+    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS && mode == 6){
        if(curpoints.size() < 2) return; // 至少需要两个点才能绘制曲线
        detectposition(window, xpos, ypos);
        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
        drawBezier(window);
        graphics.push_back({curpoints,mode,curcolor,curwidth});
+       getcenposition(graphics.back());
        curpoints.clear();
     }
 }
@@ -81,13 +76,13 @@ void Bezier_Mouse_Pressed(GLFWwindow* window, int button, int action){
 // 处理贝塞尔曲线在编辑模式下的鼠标操作
 void Bezier_Edit_Mouse_Handler(GLFWwindow* window, int button, int action, int mods) {
     // 确保我们在编辑模式且选中了贝塞尔曲线
-    if (mode != -1 || ChooseIdx == -1 || graphics[ChooseIdx].mode != 6 || isinui(window) == true) return;
+    if (mode != -1 || ChooseIdx == -1 || graphics[ChooseIdx].mode != 6 ) return;
     
     detectposition(window, xpos, ypos);
     Point currentPos = {static_cast<int>(xpos), static_cast<int>(ypos)};
     
     // 鼠标按下时，检查是否点击了控制点
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
         selectedPointIndex = -1;
         for (int i = 0; i < graphics[ChooseIdx].points.size(); i++) {
             if (isNearControlPoint(currentPos, graphics[ChooseIdx].points[i])) {
@@ -98,7 +93,7 @@ void Bezier_Edit_Mouse_Handler(GLFWwindow* window, int button, int action, int m
     }
     
     // 鼠标释放时，重置选中状态
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_RELEASE) {
         selectedPointIndex = -1;
     }
 }

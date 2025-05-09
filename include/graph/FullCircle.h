@@ -23,7 +23,7 @@ void drawFullArc(GLFWwindow *window){
     render();
 }
 void Full_Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 2&& isinui(window) == false){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 2){
         if(curpoints.size()==0){
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
@@ -32,16 +32,10 @@ void Full_Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
             drawFullArc(window);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});//将当前点加入到当前图形的点中
             graphics.push_back({curpoints,mode,curcolor,curwidth});
-            
+            getcenposition(graphics.back());
             curpoints.clear();
         }
     }
 }
-void Full_Circle_Keyboard_Pressed(int key, int action) {
-    if (key == GLFW_KEY_O && action == GLFW_PRESS) { // 检查是否按下 Shift+C
-        mode = 2;
-        curpoints.clear(); // 清空当前点
-        std::cout << "Full Circle Mode" << std::endl;
-    }
-}
+
 #endif

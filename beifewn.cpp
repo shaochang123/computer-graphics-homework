@@ -1,292 +1,281 @@
-#include<graph/Line.h>
-#include<graph/Circle.h>
-#include<graph/Fill.h>
-#include<graph/Polygon.h>
-#include<graph/Crop.h>
-#include<graph/FullCircle.h>
-#include<transform/translation.h>
-#include<graph/bezier.h>
-// 鼠标点击回调函数
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    Line_Mouse_Pressed(window, button, action);
-    Circle_Mouse_Pressed(window, button, action);
-    Full_Circle_Mouse_Pressed(window, button, action);
-    Fill_Mouse_Pressed(window, button, action);
-    Polygon_Mouse_Pressed(window, button, action);
-    SelectGraphByClick(window, button, action);
-    Bezier_Mouse_Pressed(window, button, action);
-    Bezier_Edit_Mouse_Handler(window,button,action,mods);
-}
-// 键盘回调函数
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    Line_Keyboard_Pressed(key, action);
-    Circle_Keyboard_Pressed(key, action);
-    Full_Circle_Keyboard_Pressed(key, action);
-    Fill_Keyboard_Pressed(key, action);
-    Polygon_Keyboard_Pressed(key, action);
-    Select(key,action);
-    ChangeSelectedGraph(key,action);
-    backup(key,mods,action);
-    frontup(key,mods,action);
-    saveImage(key,mods,action);
-    ChangeWidth(key, action);
-    Translation(window);
-    Bezier_Keyboard_Pressed(key, action);
-}
-
-void flushwindow();
-int main() {
-    const int width = 600, height = 800;//设置窗口大小
-    GLFWwindow* window = init(width, height);
-    // 初始化ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-    // 设置ImGui风格
-    ImGui::StyleColorsDark();
-
-    // 初始化平台/渲染器后端
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
-
-    // 再注册其他回调
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    // 注册鼠标滚轮回调函数，用来旋转图形
-    glfwSetScrollCallback(window, scroll_callback);
-    // 注册键盘回调函数
-    glfwSetKeyCallback(window, key_callback);
+#ifndef TRANSFORM_SELECTGRAPH_H_INCLUDED
+#define TRANSFORM_SELECTGRAPH_H_INCLUDED
+#ifndef GRAPH_INIT_H_INCLUDED
+#include <graph/init.h>
+#endif
+// 检测鼠标位置函数
+Point applyTransform1(const Point& p, const Matrix3x3& transform) {
+    // 将点转换为齐次坐标
+    float x = p.x;
+    float y = p.y;
+    float w = 1.0f;
     
-    while (!glfwWindowShouldClose(window)) {
-        
-        glfwPollEvents();
-        flushwindow();//刷新屏幕
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        {
-            // 获取窗口尺寸
+    // 应用变换矩阵
+    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
+    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
+    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
+    
+    // 齐次坐标归一化（除以w）
+    if (newW != 0.0f) {
+        newX /= newW;
+        newY /= newW;
+    }
+    
+    return {static_cast<int>(newX), static_cast<int>(newY)};
+}
+void detectposition1(GLFWwindow *window, double &xpos, double &ypos) {
+    glfwGetCursorPos(window, &xpos, &ypos);
+    
     int width, height;
-    glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
-    // if (ImGui::Button("测试按钮")) {
-    //     std::cout << "按钮被点击了！" << std::endl;
-    // }
-    
-    // static float value = 0.5f;
-    // if (ImGui::SliderFloat("测试滑块", &value, 0.0f, 1.0f)) {
-    //     std::cout << "滑块值改变为: " << value << std::endl;
-    // }
-    // 设置ImGui窗口的位置和大小
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(width, 200), ImGuiCond_Always);
-    
-    // 移除窗口装饰(标题栏、调整大小控件等)
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | 
-                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-                           ImGuiWindowFlags_NoBringToFrontOnFocus;
-                           
-    ImGui::Begin("Drawing Toolbox", nullptr, flags);
-    
-    // 模式选择按钮区域
-    ImGui::Text("Drawing Mode:");
-    if (ImGui::Button("Line Mode(Bresenham)")){mode=0;curpoints.clear();std::cout<<"Line(Bresenham) Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Line Mode(middleline)")){mode=7;curpoints.clear();std::cout<<"Line(middleline) Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Arc Mode")){mode=1;curpoints.clear();std::cout<<"Arc Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Crop Mode")){mode=5;curpoints.clear();std::cout<<"Crop Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
-    if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Polygon Mode")){mode=4;curpoints.clear();std::cout<<"Polygon Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Bezier Mode")){mode=6;curpoints.clear();std::cout<<"Bezier Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Select Mode")){mode=-1;curpoints.clear();std::cout<<"Select Mode"<<std::endl;}
-    
-    ImGui::Separator();
-    
-    // 颜色调整区域
-    ImGui::Text("Color Control:");
-    
-    // 创建临时变量存储当前颜色值（值范围0.0-1.0）
-    static float color[3] = {0.0f, 0.0f, 0.0f};
-    
-    // 根据模式和选择状态获取当前颜色
-    if (mode != -1) {
-        // 在绘图模式下，使用当前颜色
-        color[0] = curcolor.r;
-        color[1] = curcolor.g;
-        color[2] = curcolor.b;
-    } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-        // 在选择模式下，使用选中图形的颜色
-        color[0] = graphics[ChooseIdx].color.r;
-        color[1] = graphics[ChooseIdx].color.g;
-        color[2] = graphics[ChooseIdx].color.b;
-    }
-    
-    // 显示滑块控制RGB颜色
-    bool colorChanged = false;
-    colorChanged |= ImGui::SliderFloat("Red", &color[0], 0.0f, 1.0f);
-    colorChanged |= ImGui::SliderFloat("Green", &color[1], 0.0f, 1.0f);
-    colorChanged |= ImGui::SliderFloat("Blue", &color[2], 0.0f, 1.0f);
-    
-    // 根据模式将更改应用到相应的颜色变量
-    if (colorChanged) {
-        if (mode != -1) {
-            // 更新当前绘图颜色
-            curcolor = {color[0], color[1], color[2]};
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            // 更新选中图形的颜色
-            graphics[ChooseIdx].color = {color[0], color[1], color[2]};
-        }
-    }
-    
-    ImGui::Separator();
-    
-    // 线宽控制
-    int wid = (mode != -1) ? curwidth : 
-                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].width : 1;
-    if (ImGui::SliderInt("Line Width", &wid, 1, 10)) {
-        if (mode != -1) {
-            curwidth = wid;
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            graphics[ChooseIdx].width = wid;
-        }
-    }
-    
-    ImGui::Separator();
-    
-    // 显示当前模式
-    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop", "Bezier", "Line(middleline)", "Selection"};
-    int displayMode = (mode == -1) ? 8 : mode;
-    if (displayMode >= 0 && displayMode < 9) {
-        ImGui::Text("Current Mode: %s", modeNames[displayMode]);
-    }
-    
-    // 显示键盘快捷键信息
-    ImGui::Separator();
-    ImGui::Text("Keyboard Shortcuts:");
-    ImGui::BulletText("Ctrl+S: Save image");
-    ImGui::BulletText("Ctrl+Z: Undo");
-    ImGui::BulletText("Ctrl+Y: Redo");
-    
-    ImGui::End();
-        }
-        
-        glClear(GL_COLOR_BUFFER_BIT); // 清空颜色缓冲区
-        if(mode == 0) drawLine(window);//渲染直线
-        else if(mode==1) drawArc(window);//渲染圆弧
-        else if(mode==2) drawFullArc(window);//渲染整圆
-        else if(mode==4) drawPolygon(window);//渲染填充
-        else if(mode==6) drawBezier(window);
-        else render();
-        
-        if(mode!=-1)ChooseIdx = -1;
-        if(mode==-1&&ChooseIdx!=-1&&graphics[ChooseIdx].mode==6&&selectedPointIndex!=-1){
-            detectposition(window, xpos, ypos);
-            graphics[ChooseIdx].points[selectedPointIndex] = {static_cast<int>(xpos), static_cast<int>(ypos)};
-        }
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    
-        glfwSwapBuffers(window);
-        
-        
-    }
-    // 清理ImGui
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-    glfwTerminate();std::cout<<"bye\n"<<std::endl;//bye
-    return 0;
+    glfwGetFramebufferSize(window, &width, &height);
+   
+    xpos = xpos / width * maxn + 1;
+    ypos = maxn - ypos / height * maxn + 1;
 }
 
-
-void flushwindow() {
-    // 刷新屏幕
-    for(int i=0; i<maxn; i++) {
-        for(int j=0; j<maxn; j++) {
-            g[i][j] = {1.0, 1.0, 1.0};
+// 改变已选择的图形的函数
+void ChangeSelectedGraph(int key, int action){
+    if(key == GLFW_KEY_LEFT && action == GLFW_PRESS){
+        ChooseIdx = (ChooseIdx-1+graphics.size())%graphics.size();
+    }
+    else if(key == GLFW_KEY_RIGHT && action == GLFW_PRESS){
+        ChooseIdx = (ChooseIdx+1)%graphics.size();
+    }
+    else if(key == GLFW_KEY_DELETE && action == GLFW_PRESS){
+        if(mode == -1 && !graphics.empty()){
+            graphics.erase(graphics.begin()+ChooseIdx);
+            if(ChooseIdx >= graphics.size()) ChooseIdx = graphics.size()-1;
         }
     }
-    for(int i=0; i<graphics.size(); i++) {
-        Color choosecolor;
-        if(i==ChooseIdx) {
-            choosecolor = graphics[i].color;
-            graphics[i].color = selectedColor;
+    if(key == GLFW_KEY_1 && mode == -1 && ChooseIdx != -1 && graphics[ChooseIdx].mode == 6){
+        graphics[ChooseIdx].key = (graphics[ChooseIdx].key+1)%4;
+    }
+}
+
+// 检测距离辅助函数
+bool isCloseToPoint(double x, double y, double clickX, double clickY, int threshold = 5) {
+    double dx = x - clickX;
+    double dy = y - clickY;
+    return (dx * dx + dy * dy) <= threshold * threshold;
+}
+
+// 鼠标点击选择图形函数
+void SelectGraphByClick(GLFWwindow* window, int button, int action) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == -1) {
+        double clickX, clickY;
+        detectposition1(window, clickX, clickY);
+        
+        const int threshold = 5; // 选择临界值
+        int closestGraphIdx = -1;
+        double minDistance = threshold * threshold + 1; // 初始距离设为比阈值大
+        
+        // 遍历所有图形，找到最近的
+        for (int i = 0; i < graphics.size(); i++) {
+            // 创建一个标记来跟踪此图形是否被选中
+            bool graphSelected = false;
+            double shortestDistSq = minDistance;
+            
+            // 根据图形类型进行不同的绘制逻辑（类似flushwindow中的逻辑）
+            if (graphics[i].mode == 0 || graphics[i].mode == 7) { // 直线
+                // 获取变换后的点
+                Point p1 = applyTransform1(graphics[i].points[0], graphics[i].transform);
+                Point p2 = applyTransform1(graphics[i].points[1], graphics[i].transform);
+                
+                // 模拟绘制线段的过程，但只检查距离不真正绘制
+                const int dx = abs(p2.x - p1.x), sx = p1.x < p2.x ? 1 : -1;
+                const int dy = -abs(p2.y - p1.y), sy = p1.y < p2.y ? 1 : -1;
+                int err = dx + dy, e2;
+                Point currentPoint = p1;
+                
+                while (true) {
+                    // 检查当前点与鼠标点击位置的距离
+                    double distSq = pow(currentPoint.x - clickX, 2) + pow(currentPoint.y - clickY, 2);
+                    if (distSq < shortestDistSq) {
+                        shortestDistSq = distSq;
+                        if (distSq <= threshold * threshold) {
+                            graphSelected = true;
+                        }
+                    }
+                    
+                    if (currentPoint.x == p2.x && currentPoint.y == p2.y) break;
+                    
+                    e2 = 2 * err;
+                    if (e2 >= dy) { err += dy; currentPoint.x += sx; }
+                    if (e2 <= dx) { err += dx; currentPoint.y += sy; }
+                }
+            }
+            else if (graphics[i].mode == 2) { // 整圆
+                Point center = applyTransform1(graphics[i].points[0], graphics[i].transform);
+                Point radiusPoint = applyTransform1(graphics[i].points[1], graphics[i].transform);
+                int radius = sqrt(pow(radiusPoint.x - center.x, 2) + pow(radiusPoint.y - center.y, 2));
+                
+                // 检查点是否在圆上（简化版)
+                double dist = sqrt(pow(clickX - center.x, 2) + pow(clickY - center.y, 2));
+                if (abs(dist - radius) <= threshold) {
+                    shortestDistSq = 0; // 表示我们找到了匹配
+                    graphSelected = true;
+                }
+            }
+            else if (graphics[i].mode == 1) { // 圆弧 - 修复部分
+                Point center = applyTransform1(graphics[i].points[0], graphics[i].transform);
+                Point p1 = applyTransform1(graphics[i].points[1], graphics[i].transform);
+                Point p2 = applyTransform1(graphics[i].points[2], graphics[i].transform);
+                
+                double radius = sqrt(pow(p1.x - center.x, 2) + pow(p1.y - center.y, 2));
+                
+                // 计算圆弧的角度范围
+                double startAngle = atan2(p1.y - center.y, p1.x - center.x);
+                double endAngle = atan2(p2.y - center.y, p2.x - center.x);
+                
+                // 规范化角度到[0, 2π]
+                if (startAngle < 0) startAngle += 2 * M_PI;
+                if (endAngle < 0) endAngle += 2 * M_PI;
+                
+                // 查找是否在圆弧上
+                double angle = atan2(clickY - center.y, clickX - center.x);
+                if (angle < 0) angle += 2 * M_PI; // 规范化角度
+                
+                double dist = sqrt(pow(clickX - center.x, 2) + pow(clickY - center.y, 2)); // 修复距离计算
+                
+                // 检查是否在圆弧上
+                if (abs(dist - radius) <= threshold) {
+                    // 检查角度是否在范围内
+                    bool inAngleRange = false;
+                    if (endAngle < startAngle) {
+                        inAngleRange = (angle <= startAngle && angle >= endAngle);
+                    } else {
+                        inAngleRange = (angle <= startAngle || angle >= endAngle);
+                    }
+                    
+                    if (inAngleRange) {
+                        shortestDistSq = 0;
+                        graphSelected = true;
+                    }
+                }
+            }
+            else if (graphics[i].mode == 3) { // 填充区域 - 新增部分
+                // 应用变换到所有填充点
+                std::vector<Point> transformedPoints;
+                for (const auto& point : graphics[i].points) {
+                    transformedPoints.push_back(applyTransform1(point, graphics[i].transform));
+                }
+                
+                // 检查点击点是否在填充区域的任何点附近
+                for (const auto& point : transformedPoints) {
+                    double dist_sq = pow(point.x - clickX, 2) + pow(point.y - clickY, 2);
+                    if (dist_sq < shortestDistSq) {
+                        shortestDistSq = dist_sq;
+                        if (dist_sq <= threshold * threshold) {
+                            graphSelected = true;
+                        }
+                    }
+                }
+            }
+            else if (graphics[i].mode == 4) { // 多边形
+                // 检查点击点是否在多边形边缘附近
+                std::vector<Point> transformedPoints;
+                for (const auto& point : graphics[i].points) {
+                    transformedPoints.push_back(applyTransform1(point, graphics[i].transform));
+                }
+                
+                // 方法1: 检查点是否在多边形边缘
+                for (size_t j = 0; j < transformedPoints.size(); j++) {
+                    Point p1 = transformedPoints[j];
+                    Point p2 = transformedPoints[(j + 1) % transformedPoints.size()];
+                    
+                    // 计算点到线段的距离 - 修正计算方式
+                    double line_length = sqrt(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2));
+                    if (line_length == 0) continue;
+                    
+                    // 计算点到直线的距离
+                    double distance = fabs((p2.x - p1.x) * (p1.y - clickY) - (p1.x - clickX) * (p2.y - p1.y)) / line_length;
+                    
+                    // 检查点是否在线段范围内
+                    double dot_product = ((clickX - p1.x) * (p2.x - p1.x) + (clickY - p1.y) * (p2.y - p1.y)) / (line_length * line_length);
+                    
+                    if (dot_product >= 0 && dot_product <= 1 && distance <= threshold) {
+                        shortestDistSq = distance * distance; // 使用实际距离
+                        graphSelected = true;
+                    }
+                }
+                
+                // 方法2: 检查点是否在多边形内部
+                if (!graphSelected) {
+                    bool inside = false;
+                    for (size_t j = 0, k = transformedPoints.size() - 1; j < transformedPoints.size(); k = j++) {
+                        if (((transformedPoints[j].y > clickY) != (transformedPoints[k].y > clickY)) &&
+                            (clickX < (transformedPoints[k].x - transformedPoints[j].x) * (clickY - transformedPoints[j].y) / 
+                                      (transformedPoints[k].y - transformedPoints[j].y) + transformedPoints[j].x)) {
+                            inside = !inside;
+                        }
+                    }
+                    
+                    if (inside) {
+                        shortestDistSq = 0; // 点在多边形内
+                        graphSelected = true;
+                    }
+                }
+            }
+            else if (graphics[i].mode == 6) { // 贝塞尔曲线 - 保持原有逻辑
+                std::vector<Point> transformedPoints;
+                for (const auto& point : graphics[i].points) {
+                    transformedPoints.push_back(applyTransform1(point, graphics[i].transform));
+                }
+                
+                // 检查点是否在控制点附近
+                for (const auto& point : transformedPoints) {
+                    double dist_sq = pow(clickX - point.x, 2) + pow(clickY - point.y, 2);
+                    if (dist_sq < shortestDistSq) {
+                        shortestDistSq = dist_sq;
+                        if (dist_sq <= threshold * threshold) {
+                            graphSelected = true;
+                        }
+                    }
+                }
+                
+                // 检查点是否在贝塞尔曲线上（简化计算）
+                if (!graphSelected) {
+                    const double step = 0.01; // 步长
+                    for (double t = 0; t <= 1.0; t += step) {
+                        // 创建临时数组用于递归计算
+                        std::vector<std::pair<double,double>> points;
+                        for (const auto& p : transformedPoints) {
+                            points.push_back({static_cast<double>(p.x), static_cast<double>(p.y)});
+                        }
+                        
+                        // de Casteljau算法计算曲线上的点
+                        for (int r = 1; r < points.size(); r++) {
+                            for (int j = 0; j < points.size() - r; j++) {
+                                points[j].first = (1 - t) * points[j].first + t * points[j + 1].first;
+                                points[j].second = (1 - t) * points[j].second + t * points[j + 1].second;
+                            }
+                        }
+                        
+                        double dist_sq = pow(clickX - points[0].first, 2) + pow(clickY - points[0].second, 2);
+                        if (dist_sq < shortestDistSq) {
+                            shortestDistSq = dist_sq;
+                            if (dist_sq <= threshold * threshold) {
+                                graphSelected = true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 如果找到比当前最近的图形，更新索引
+            if (graphSelected && shortestDistSq < minDistance) {
+                minDistance = shortestDistSq;
+                closestGraphIdx = i;
+            }
         }
         
-        // 获取当前变换矩阵
-        Matrix3x3 transform = graphics[i].transform;
-        
-        if(graphics[i].mode == 0) { // 直线
-            // 应用变换到端点
-            Point p1 = applyTransform(graphics[i].points[0], transform);
-            Point p2 = applyTransform(graphics[i].points[1], transform);
-            
-            drawLineBresenham(p1, p2, false, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 2) { // 整圆
-            Point center = applyTransform(graphics[i].points[0], transform); 
-            Point edge = applyTransform(graphics[i].points[1], transform);
-            
-            // 计算变换后的半径
-            float radius = sqrt(pow(edge.x - center.x, 2) + pow(edge.y - center.y, 2));
-            
-            drawarc(center, radius, 0, 2 * M_PI, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 1) { // 圆弧
-            Point center = applyTransform(graphics[i].points[0], transform);
-            Point start = applyTransform(graphics[i].points[1], transform);
-            Point end = applyTransform(graphics[i].points[2], transform);
-            
-            double r = sqrt((start.x - center.x) * (start.x - center.x) + 
-                         (start.y - center.y) * (start.y - center.y));
-                      
-            double startRad = atan2(center.y - start.y, start.x - center.x);
-            double endRad = atan2(center.y - end.y, end.x - center.x);
-            
-            if (startRad < 0) startRad += 2 * M_PI;
-            if (endRad < 0) endRad += 2 * M_PI;
-            
-            drawarc(center, r, startRad, endRad, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 3) { // 填充区域
-            // 应用变换到所有填充点
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            
-            for (const auto& point : transformedPoints) {
-                setpixel(point.x, point.y, graphics[i].width, graphics[i].color);
-            }
-        }
-        else if(graphics[i].mode == 4) { // 多边形
-            // 应用变换到所有多边形顶点
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            
-            fillPolygon(transformedPoints, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 6) { // Bezier曲线
-           
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            for(int j=0;j<transformedPoints.size()-1;j++){
-                if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
-            }
-            drawBezierCurve(transformedPoints,graphics[i].width,graphics[i].color);
-        }
-        if(i == ChooseIdx) {
-            graphics[i].color = choosecolor;
+        // 更新选中的图形索引
+        if (closestGraphIdx != -1) {
+            ChooseIdx = closestGraphIdx;
+            printf("选择了图形 %d\n", closestGraphIdx);
+        } else {
+            printf("没有选中任何图形\n");
         }
     }
 }
+#endif

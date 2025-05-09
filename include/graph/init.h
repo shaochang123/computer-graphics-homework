@@ -49,14 +49,19 @@ struct graphic {
     Color color = {0, 0, 0};        // 图形颜色
     int width = 1;                  // 线宽
     Matrix3x3 transform = Matrix3x3();  // 初始化为单位矩阵
+    double cenx=0;
+    double ceny=0;
     int key = 0;//专属于bezier
+    int a=10;
+    int b=10;
+    bool isdefault = true;//是否是默认中心
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
-#define maxn 600 // 定义像素网格大小
+#define maxn 800 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
-int mode=0,curwidth=1,ChooseIdx = -1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
+int mode=0,curwidth=1,ChooseIdx = -1,cura=10,curb=10;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
 double xpos,ypos;//鼠标坐标
 #include<transform/selectgraph.h>
 void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
@@ -69,17 +74,17 @@ void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
-    ypos-=200;
+    
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    height-=200;
+   
     xpos = xpos / width * maxn + 1;
     ypos = maxn - ypos / height * maxn + 1;
 }
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     // 调整视口大小
-    glViewport(0, 0, width, height-200);
+    glViewport(0, 0, width, height);
     // 重新设置正交投影
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();//重置当前的投影矩阵
@@ -105,31 +110,18 @@ void render(){
         }
     }
 }
-
-void ChangeWidth(int key,int action){
-    if(key == GLFW_KEY_UP && action == GLFW_PRESS) {
-        if(mode!=-1){
-            curwidth++;
-            std::cout << "Line width increased to: " << curwidth << std::endl;
-        }
-        else {
-            if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width++;
-            std::cout << "Line width increased to: " << graphics[ChooseIdx].width << std::endl;
-        }
-        
+void getcenposition(graphic &gra){
+    int mode = gra.mode;
+    double centerx = 0;
+    double centery = 0;
+    for (const auto& point : gra.points) {
+        centerx += point.x;
+        centery += point.y;
     }
-    else if(key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-        if(curwidth > 1 && mode!=-1) {
-            curwidth--;
-            std::cout << "Line width decreased to: " << curwidth << std::endl;
-        }
-        else{
-            if(graphics[ChooseIdx].width>1){
-                if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width--;
-                std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
-            }
-        }
-    }
+    centerx /= gra.points.size();
+    centery /= gra.points.size();
+    gra.cenx = centerx;
+    gra.ceny = centery;
 }
 void saveImage(int key, int mods, int action){
     if(key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
@@ -216,29 +208,13 @@ Point applyTransform(const Point& p, const Matrix3x3& transform) {
     
     return {static_cast<int>(newX), static_cast<int>(newY)};
 }
-void ui() {
-    // 获取窗口尺寸
-    int width, height;
-    glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
-    // if (ImGui::Button("测试按钮")) {
-    //     std::cout << "按钮被点击了！" << std::endl;
-    // }
+void ui() {                  
     
-    // static float value = 0.5f;
-    // if (ImGui::SliderFloat("测试滑块", &value, 0.0f, 1.0f)) {
-    //     std::cout << "滑块值改变为: " << value << std::endl;
-    // }
-    // 设置ImGui窗口的位置和大小
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(width, 200), ImGuiCond_Always);
-    
-    // 移除窗口装饰(标题栏、调整大小控件等)
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | 
-                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-                           ImGuiWindowFlags_NoBringToFrontOnFocus;
-                           
-    ImGui::Begin("Drawing Toolbox", nullptr, flags);
-    
+     // 设置初始位置，但只影响首次显示
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(300, 420), ImGuiCond_FirstUseEver);
+    ImGuiWindowFlags window_flags = 0;
+    ImGui::Begin("Drawing Toolbox",nullptr, window_flags);
     // 模式选择按钮区域
     ImGui::Text("Drawing Mode:");
     if (ImGui::Button("Line Mode(Bresenham)")){mode=0;curpoints.clear();std::cout<<"Line(Bresenham) Mode"<<std::endl;}
@@ -308,7 +284,16 @@ void ui() {
             graphics[ChooseIdx].width = wid;
         }
     }
-    
+    // 线型控制
+    int a = (mode != -1) ? cura : 
+                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].a : 1;
+    if (ImGui::SliderInt("Line type", &a, 1, 10)) {
+        if (mode != -1) {
+            cura = a;
+        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+            graphics[ChooseIdx].a = a;
+        }
+    }
     ImGui::Separator();
     
     // 显示当前模式
@@ -316,6 +301,7 @@ void ui() {
     int displayMode = (mode == -1) ? 8 : mode;
     if (displayMode >= 0 && displayMode < 9) {
         ImGui::Text("Current Mode: %s", modeNames[displayMode]);
+        if(displayMode==8)ImGui::Text("%d",ChooseIdx);
     }
     
     // 显示键盘快捷键信息
@@ -327,19 +313,37 @@ void ui() {
     
     ImGui::End();
 }
-bool isinui(GLFWwindow* window) {
-        // 获取鼠标位置
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-        
-        // 如果鼠标在顶部UI区域 (y坐标小于200)
-        if (ypos < 200) {
-            return true;
-        }
-        
-        // 否则检查ImGui是否要捕获鼠标
-        ImGuiIO& io = ImGui::GetIO();
-        return io.WantCaptureMouse;
-    }
+// 计算3x3矩阵的逆矩阵
+Matrix3x3 inverse(const Matrix3x3& mat) {
+    Matrix3x3 inv;
+    float m[3][3];
+    // 拷贝原矩阵
+    for(int i=0;i<3;i++)
+        for(int j=0;j<3;j++)
+            m[i][j] = mat.m[i][j];
 
+    float det =
+        m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) -
+        m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
+        m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+
+    if (fabs(det) < 1e-8) // 不可逆
+        return Matrix3x3();
+
+    float invDet = 1.0f / det;
+
+    inv.m[0][0] =  (m[1][1]*m[2][2]-m[1][2]*m[2][1]) * invDet;
+    inv.m[0][1] = -(m[0][1]*m[2][2]-m[0][2]*m[2][1]) * invDet;
+    inv.m[0][2] =  (m[0][1]*m[1][2]-m[0][2]*m[1][1]) * invDet;
+
+    inv.m[1][0] = -(m[1][0]*m[2][2]-m[1][2]*m[2][0]) * invDet;
+    inv.m[1][1] =  (m[0][0]*m[2][2]-m[0][2]*m[2][0]) * invDet;
+    inv.m[1][2] = -(m[0][0]*m[1][2]-m[0][2]*m[1][0]) * invDet;
+
+    inv.m[2][0] =  (m[1][0]*m[2][1]-m[1][1]*m[2][0]) * invDet;
+    inv.m[2][1] = -(m[0][0]*m[2][1]-m[0][1]*m[2][0]) * invDet;
+    inv.m[2][2] =  (m[0][0]*m[1][1]-m[0][1]*m[1][0]) * invDet;
+
+    return inv;
+}
 #endif // GRAPH_INIT_H_INCLUDED
