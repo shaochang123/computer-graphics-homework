@@ -223,7 +223,8 @@ void ui() {
     ImGui::SameLine();
     if (ImGui::Button("Arc Mode")){mode=1;curpoints.clear();std::cout<<"Arc Mode"<<std::endl;}
     ImGui::SameLine();
-    if (ImGui::Button("Crop Mode")){mode=5;curpoints.clear();std::cout<<"Crop Mode"<<std::endl;}
+    if (ImGui::Button("Crop Mode(Cohen-Sutherland)")){mode=5;curpoints.clear();std::cout<<"Crop Mode(Cohen-Sutherland)"<<std::endl;}
+    if (ImGui::Button("Crop Mode(middle point)")){mode=8;curpoints.clear();std::cout<<"Crop Mode(middle point)"<<std::endl;}
     ImGui::SameLine();
     if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
     if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}

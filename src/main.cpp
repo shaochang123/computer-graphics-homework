@@ -24,6 +24,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     Bezier_Mouse_Pressed(window, button, action);
     Bezier_Edit_Mouse_Handler(window,button,action,mods);
     newcenter(window,button,action,mods);
+    crop_mouse_pressed(window,button,action,mods);
 }
 // 键盘回调函数
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -85,6 +86,7 @@ int main() {
         else if(mode==1) drawArc(window);//渲染圆弧
         else if(mode==2) drawFullArc(window);//渲染整圆
         else if(mode==4) drawPolygon(window);//渲染填充
+        else if(mode==5||mode==8)drawrec(window);
         else if(mode==6) drawBezier(window);//渲染贝塞尔曲线
         else render();
         if(mode!=-1)ChooseIdx = -1;
