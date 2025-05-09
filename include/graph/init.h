@@ -2,6 +2,9 @@
 #define GRAPH_INIT_H_INCLUDED
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include<imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
 #include <iostream>
 #include <math.h>
 #include <queue>
@@ -66,15 +69,17 @@ void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
+    ypos-=200;
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
+    height-=200;
     xpos = xpos / width * maxn + 1;
     ypos = maxn - ypos / height * maxn + 1;
 }
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     // 调整视口大小
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height-200);
     // 重新设置正交投影
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();//重置当前的投影矩阵
@@ -124,23 +129,6 @@ void ChangeWidth(int key,int action){
                 std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
             }
         }
-    }
-}
-void ChangeColor(int key,int action){
-    if(key == GLFW_KEY_R && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {1.0f, 0.0f, 0.0f}; // 红色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
-        std::cout << "Color changed to red" << std::endl;
-    }
-    else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {0.0f, 1.0f, 0.0f}; // 绿色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
-        std::cout << "Color changed to green" << std::endl;
-    }
-    else if(key == GLFW_KEY_B && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {0.0f, 0.0f, 1.0f}; // 蓝色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
-        std::cout << "Color changed to blue" << std::endl;
     }
 }
 void saveImage(int key, int mods, int action){
@@ -228,4 +216,130 @@ Point applyTransform(const Point& p, const Matrix3x3& transform) {
     
     return {static_cast<int>(newX), static_cast<int>(newY)};
 }
+void ui() {
+    // 获取窗口尺寸
+    int width, height;
+    glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
+    // if (ImGui::Button("测试按钮")) {
+    //     std::cout << "按钮被点击了！" << std::endl;
+    // }
+    
+    // static float value = 0.5f;
+    // if (ImGui::SliderFloat("测试滑块", &value, 0.0f, 1.0f)) {
+    //     std::cout << "滑块值改变为: " << value << std::endl;
+    // }
+    // 设置ImGui窗口的位置和大小
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(width, 200), ImGuiCond_Always);
+    
+    // 移除窗口装饰(标题栏、调整大小控件等)
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | 
+                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+                           ImGuiWindowFlags_NoBringToFrontOnFocus;
+                           
+    ImGui::Begin("Drawing Toolbox", nullptr, flags);
+    
+    // 模式选择按钮区域
+    ImGui::Text("Drawing Mode:");
+    if (ImGui::Button("Line Mode(Bresenham)")){mode=0;curpoints.clear();std::cout<<"Line(Bresenham) Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Line Mode(middleline)")){mode=7;curpoints.clear();std::cout<<"Line(middleline) Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Arc Mode")){mode=1;curpoints.clear();std::cout<<"Arc Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Crop Mode")){mode=5;curpoints.clear();std::cout<<"Crop Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
+    if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Polygon Mode")){mode=4;curpoints.clear();std::cout<<"Polygon Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Bezier Mode")){mode=6;curpoints.clear();std::cout<<"Bezier Mode"<<std::endl;}
+    ImGui::SameLine();
+    if (ImGui::Button("Select Mode")){mode=-1;curpoints.clear();std::cout<<"Select Mode"<<std::endl;}
+    
+    ImGui::Separator();
+    
+    // 颜色调整区域
+    ImGui::Text("Color Control:");
+    
+    // 创建临时变量存储当前颜色值（值范围0.0-1.0）
+    static float color[3] = {0.0f, 0.0f, 0.0f};
+    
+    // 根据模式和选择状态获取当前颜色
+    if (mode != -1) {
+        // 在绘图模式下，使用当前颜色
+        color[0] = curcolor.r;
+        color[1] = curcolor.g;
+        color[2] = curcolor.b;
+    } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+        // 在选择模式下，使用选中图形的颜色
+        color[0] = graphics[ChooseIdx].color.r;
+        color[1] = graphics[ChooseIdx].color.g;
+        color[2] = graphics[ChooseIdx].color.b;
+    }
+    
+    // 显示滑块控制RGB颜色
+    bool colorChanged = false;
+    colorChanged |= ImGui::SliderFloat("Red", &color[0], 0.0f, 1.0f);
+    colorChanged |= ImGui::SliderFloat("Green", &color[1], 0.0f, 1.0f);
+    colorChanged |= ImGui::SliderFloat("Blue", &color[2], 0.0f, 1.0f);
+    
+    // 根据模式将更改应用到相应的颜色变量
+    if (colorChanged) {
+        if (mode != -1) {
+            // 更新当前绘图颜色
+            curcolor = {color[0], color[1], color[2]};
+        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+            // 更新选中图形的颜色
+            graphics[ChooseIdx].color = {color[0], color[1], color[2]};
+        }
+    }
+    
+    ImGui::Separator();
+    
+    // 线宽控制
+    int wid = (mode != -1) ? curwidth : 
+                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].width : 1;
+    if (ImGui::SliderInt("Line Width", &wid, 1, 10)) {
+        if (mode != -1) {
+            curwidth = wid;
+        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+            graphics[ChooseIdx].width = wid;
+        }
+    }
+    
+    ImGui::Separator();
+    
+    // 显示当前模式
+    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop", "Bezier", "Line(middleline)", "Selection"};
+    int displayMode = (mode == -1) ? 8 : mode;
+    if (displayMode >= 0 && displayMode < 9) {
+        ImGui::Text("Current Mode: %s", modeNames[displayMode]);
+    }
+    
+    // 显示键盘快捷键信息
+    ImGui::Separator();
+    ImGui::Text("Keyboard Shortcuts:");
+    ImGui::BulletText("Ctrl+S: Save image");
+    ImGui::BulletText("Ctrl+Z: Undo");
+    ImGui::BulletText("Ctrl+Y: Redo");
+    
+    ImGui::End();
+}
+bool isinui(GLFWwindow* window) {
+        // 获取鼠标位置
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        
+        // 如果鼠标在顶部UI区域 (y坐标小于200)
+        if (ypos < 200) {
+            return true;
+        }
+        
+        // 否则检查ImGui是否要捕获鼠标
+        ImGuiIO& io = ImGui::GetIO();
+        return io.WantCaptureMouse;
+    }
+
 #endif // GRAPH_INIT_H_INCLUDED

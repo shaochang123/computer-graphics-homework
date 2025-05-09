@@ -29,18 +29,20 @@ void drawBezierCurve(const std::vector<Point>& controlPoints,int bwidth,Color bc
     // 对t从0到1遍历
     for (double t = 0; t <= 1.0; t += step) {
         // 创建临时数组用于递归计算
-        std::vector<Point> points = controlPoints;
-        
+        std::vector<std::pair<double,double>>points;
+        for(int i=0;i<controlPoints.size();i++){
+            points.push_back({static_cast<double>(controlPoints[i].x),static_cast<double>(controlPoints[i].y)});
+        }
         // de Casteljau算法的递归计算
         for (int r = 1; r < points.size(); r++) {
             for (int i = 0; i < points.size() - r; i++) {
-                points[i].x = (1 - t) * points[i].x + t * points[i + 1].x;
-                points[i].y = (1 - t) * points[i].y + t * points[i + 1].y;
+                points[i].first = (1 - t) * points[i].first + t * points[i + 1].first;
+                points[i].second = (1 - t) * points[i].second + t * points[i + 1].second;
             }
         }
         
         // points[0]现在包含贝塞尔曲线上的点
-        setpixel(static_cast<int>(points[0].x), static_cast<int>(points[0].y), bwidth, bcolor);
+        setpixel(static_cast<int>(points[0].first), static_cast<int>(points[0].second), bwidth, bcolor);
     }
 }
 void drawBezier(GLFWwindow *window){
@@ -62,11 +64,11 @@ void Bezier_Keyboard_Pressed(int key, int action){
     }
 }
 void Bezier_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 6){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 6 &&  isinui(window) == false){
         detectposition(window, xpos, ypos);
         curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
     }
-    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS && mode == 6){
+    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS && mode == 6&&isinui(window) == false){
        if(curpoints.size() < 2) return; // 至少需要两个点才能绘制曲线
        detectposition(window, xpos, ypos);
        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
@@ -79,7 +81,7 @@ void Bezier_Mouse_Pressed(GLFWwindow* window, int button, int action){
 // 处理贝塞尔曲线在编辑模式下的鼠标操作
 void Bezier_Edit_Mouse_Handler(GLFWwindow* window, int button, int action, int mods) {
     // 确保我们在编辑模式且选中了贝塞尔曲线
-    if (mode != -1 || ChooseIdx == -1 || graphics[ChooseIdx].mode != 6) return;
+    if (mode != -1 || ChooseIdx == -1 || graphics[ChooseIdx].mode != 6 || isinui(window) == true) return;
     
     detectposition(window, xpos, ypos);
     Point currentPos = {static_cast<int>(xpos), static_cast<int>(ypos)};

@@ -305,7 +305,7 @@ bool isPointOnBezierCurve(const Point& clickPoint, const std::vector<Point>& con
 
 // 鼠标点击选择图形的函数
 void SelectGraphByClick(GLFWwindow* window, int button, int action) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == -1) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == -1 &&  isinui(window) == false) {
         double xpos, ypos;
         detectposition(window, xpos, ypos);
         Point clickPoint = {static_cast<int>(xpos), static_cast<int>(ypos)};

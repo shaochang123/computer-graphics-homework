@@ -269,7 +269,7 @@ void drawPolygon(GLFWwindow *window) {
 }
 
 void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
-    if (mode!=4) return;
+    if (mode!=4 || isinui(window) == true) return;
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         detectposition(window, xpos, ypos);
         addPointToPolygon(curpoints, static_cast<int>(xpos), static_cast<int>(ypos));

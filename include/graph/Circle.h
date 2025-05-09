@@ -60,7 +60,7 @@ void drawArc(GLFWwindow *window){
     render();
 }
 void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1&& isinui(window) == false){
         if(curpoints.size()==0){
             detectposition(window, xpos, ypos);
             curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});

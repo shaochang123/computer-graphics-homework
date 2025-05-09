@@ -69,7 +69,7 @@ void drawLine(GLFWwindow *window){
     render();
 }
 void Line_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 0){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 0 && isinui(window) == false){
         detectposition(window, xpos, ypos);
         curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
         if(curpoints.size() == 2){

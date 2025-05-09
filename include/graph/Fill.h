@@ -27,7 +27,7 @@ void FillGraph(Point st){
     }
 }
 void Fill_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 3){
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 3&& isinui(window) == false){
         detectposition(window, xpos, ypos);
         FillGraph({static_cast<int>(xpos),static_cast<int>(ypos)});//填充算法
         graphics.push_back({curpoints,mode,curcolor,1});//将当前图形加入到图形列表中
