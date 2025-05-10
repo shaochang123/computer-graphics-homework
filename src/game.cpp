@@ -127,6 +127,7 @@ void inline isgameover(GLFWwindow* window, bool arg) {//判断游戏结束或者
             you.hp = 100;
             you.x = maxn/2;
             you.y = maxn/2-100;
+            you.switchstat('r');
             level = 0;
             gamemode = 0;
             Idx = 0;

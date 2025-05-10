@@ -19,6 +19,12 @@ class player{
     float vy = 0.0f;         // 垂直速度
     bool isJumping = false;  // 是否正在跳跃
     float jumpMaxY = maxn/2 + 80; // 最大跳跃高度（可调整）
+    
+    // 添加滞空属性
+    float floatTime = 0.0f;     // 当前滞空时间
+    float maxFloatTime = 0.3f;  // 最大滞空时间（秒）
+    bool isFloating = false;    // 是否正在滞空
+    
     player(int hp=100,int x=maxn/2,int y=maxn/2 -100,float speed=2.0,char status='r'):hp(hp),x(x),y(y),oldx(x),oldy(y),speed(speed),stat(status){}//构造函数
     void renderPlayer();
     void switchstat(char statt);
@@ -43,37 +49,71 @@ void player::drophp(){
     playaudio.playSound("resource/hit.wav"); // 播放音效
 }
 void player::move(GLFWwindow* window){
-    oldx=x;
-    oldy=y;
-    const float gravity = -0.2f;      // 重力加速度（可调整）
-    const float jumpSpeed = speed*2.8;    // 跳跃初速度（可调整）
-    const float groundY = DMenu + 7;  // 地面y坐标
+    oldx = x;
+    oldy = y;
+    const float upgravity = -0.01f;
+    const float gravity = -0.08f;       // 重力加速度
+    const float jumpSpeed = speed*0.8;  // 跳跃初速度
+    const float groundY = DMenu + 7;    // 地面y坐标
+    
     if(stat == 'b'){
-        // 跳跃
+        // 跳跃 - 现有代码保留
         if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !isJumping && y <= UMenu-5 && CanJump){
             vy = jumpSpeed;
             isJumping = true;
             CanJump = false;
+            isFloating = false;  // 刚起跳，重置滞空状态
+            floatTime = 0;       // 重置滞空时间
         }
-        // 松开上键，立刻下落
+        
+        // 松开上键逻辑 - 现有代码保留
         if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && isJumping && vy > 0){
             vy = 0.0f; // 立即下落
+            isFloating = true;  // 不进入滞空状态
+            
         }
         if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE){
             CanJump = true; // 允许再次跳跃
         }
         // 应用重力和竖直速度
         if(isJumping){
-            y += vy;
-            
-            vy += gravity;
-            if(y <= groundY){ // 落地
-                y = groundY;
-                vy = 0;
-                isJumping = false;
+            // 上升阶段
+            if(vy > 0){
+                y += vy;
+                vy += upgravity;
+                
+                // 判断是否到达最高点
+                if(vy <= 0){
+                    vy = 0;  // 停止上升
+                    isFloating = true;  // 进入滞空状态
+                }
+            }
+            // 滞空阶段
+            else if(isFloating){
+                floatTime += 1.0f/60.0f;  // 假设以60FPS运行
+                
+                // 滞空时间到期，开始下落
+                if(floatTime >= maxFloatTime){
+                    isFloating = false;
+                    vy = gravity;  // 开始下落，初始速度较小
+                }
+            }
+            // 下落阶段
+            else {
+                y += vy;
+                vy += gravity;
+                
+                // 检查是否落地
+                if(y <= groundY){
+                    y = groundY;
+                    vy = 0;
+                    isJumping = false;
+                    isFloating = false;
+                }
             }
         }
-        // 左右移动
+        
+        // 左右移动代码保持不变...
         if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && x-speed>=LMenu+7){
             x -= speed;
             
