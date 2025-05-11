@@ -55,6 +55,7 @@ struct graphic {
     int a=10;
     int b=10;
     bool isdefault = true;//是否是默认中心
+    int reserved;
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
@@ -62,7 +63,29 @@ std::stack<graphic>graphicsbackup;//撤回的图形
 #define maxn 800 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
 int mode=0,curwidth=1,ChooseIdx = -1,cura=10,curb=10;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
+// B样条阶数（默认为4，即3次B样条）
+int bsplineOrder = 4;
 double xpos,ypos;//鼠标坐标
+// 应用变换矩阵到点
+Point applyTransform(const Point& p, const Matrix3x3& transform) {
+    // 将点转换为齐次坐标
+    float x = p.x;
+    float y = p.y;
+    float w = 1.0f;
+    
+    // 应用变换矩阵
+    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
+    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
+    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
+    
+    // 齐次坐标归一化（除以w）
+    if (newW != 0.0f) {
+        newX /= newW;
+        newY /= newW;
+    }
+    
+    return {static_cast<int>(newX), static_cast<int>(newY)};
+}
 #include<transform/selectgraph.h>
 void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
     for(int i =x-w+1;i<=x+w-1;i++){
@@ -228,26 +251,7 @@ GLFWwindow* init(int width, int height){
     framebuffer_size_callback(window, width, height);
     return window;
 }
-// 应用变换矩阵到点
-Point applyTransform(const Point& p, const Matrix3x3& transform) {
-    // 将点转换为齐次坐标
-    float x = p.x;
-    float y = p.y;
-    float w = 1.0f;
-    
-    // 应用变换矩阵
-    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
-    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
-    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
-    
-    // 齐次坐标归一化（除以w）
-    if (newW != 0.0f) {
-        newX /= newW;
-        newY /= newW;
-    }
-    
-    return {static_cast<int>(newX), static_cast<int>(newY)};
-}
+
 void ui() {                  
     
      // 设置初始位置，但只影响首次显示
@@ -266,6 +270,8 @@ void ui() {
     if (ImGui::Button("Crop Mode(Cohen-Sutherland)")){mode=5;curpoints.clear();std::cout<<"Crop Mode(Cohen-Sutherland)"<<std::endl;}
     if (ImGui::Button("Crop Mode(middle point)")){mode=8;curpoints.clear();std::cout<<"Crop Mode(middle point)"<<std::endl;}
     ImGui::SameLine();
+    if (ImGui::Button("Crop Mode(Sutherland-Hodgman)")){mode=9;curpoints.clear();std::cout<<"Crop Mode(Sutherland-Hodgman)"<<std::endl;}
+    ImGui::SameLine();
     if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
     if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}
     ImGui::SameLine();
@@ -274,7 +280,8 @@ void ui() {
     if (ImGui::Button("Bezier Mode")){mode=6;curpoints.clear();std::cout<<"Bezier Mode"<<std::endl;}
     ImGui::SameLine();
     if (ImGui::Button("Select Mode")){mode=-1;curpoints.clear();std::cout<<"Select Mode"<<std::endl;}
-    
+    ImGui::SameLine();
+    if (ImGui::Button("Bspline Mode(Cox-de Boor)")){mode=10;curpoints.clear();std::cout<<"Bspline Mode"<<std::endl;}
     ImGui::Separator();
     
     // 颜色调整区域
@@ -335,14 +342,24 @@ void ui() {
             graphics[ChooseIdx].a = a;
         }
     }
+    // b样条阶数控制
+    int border = (mode != -1) ? bsplineOrder : 
+                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].reserved : 1;
+    if (ImGui::SliderInt("order", &border, 3, 12)) {
+        if (mode != -1) {
+            bsplineOrder = border;
+        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+            graphics[ChooseIdx].reserved = border;
+        }
+    }         
     ImGui::Separator();
     
     // 显示当前模式
-    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop", "Bezier", "Line(middleline)", "Selection"};
-    int displayMode = (mode == -1) ? 8 : mode;
-    if (displayMode >= 0 && displayMode < 9) {
+    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop(Cohen)", "Bezier", "Line(middleline)", "crop(middle)","crop(Sutherland-Hodgman)","Bspline(Cox-de Boor)","Selection"};
+    int displayMode = (mode == -1) ? 11 : mode;
+    if (displayMode >= 0 && displayMode < 12) {
         ImGui::Text("Current Mode: %s", modeNames[displayMode]);
-        if(displayMode==8)ImGui::Text("%d",ChooseIdx);
+        if(displayMode==11)ImGui::Text("%d",ChooseIdx);
     }
     
     // 显示键盘快捷键信息

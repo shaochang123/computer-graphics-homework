@@ -165,6 +165,136 @@ void cropmiddle(std::vector<Point> points) {
         cnt++;
     }
 }
+// Sutherland-Hodgman算法实现
+std::vector<Point> clipPolygonSutherlandHodgman(const std::vector<Point>& polygon, int xmin, int ymin, int xmax, int ymax) {
+    // 如果多边形为空，直接返回
+    if (polygon.empty()) return {};
+    
+    // 定义裁剪函数 (针对单条边裁剪)
+    auto clipAgainstLine = [](const std::vector<Point>& inputPolygon, int edge, int xmin, int ymin, int xmax, int ymax) {
+        std::vector<Point> outputPolygon;
+        
+        // 处理多边形的每条边
+        for (size_t i = 0; i < inputPolygon.size(); i++) {
+            // 当前点和下一个点
+            Point current = inputPolygon[i];
+            Point next = inputPolygon[(i + 1) % inputPolygon.size()];
+            
+            // 判断点是否在裁剪边内部
+            bool currentInside = false, nextInside = false;
+            
+            switch (edge) {
+                case LEFT:   
+                    currentInside = current.x >= xmin;
+                    nextInside = next.x >= xmin;
+                    break;
+                case RIGHT:  
+                    currentInside = current.x <= xmax;
+                    nextInside = next.x <= xmax;
+                    break;
+                case BOTTOM: 
+                    currentInside = current.y >= ymin;
+                    nextInside = next.y >= ymin;
+                    break;
+                case TOP:    
+                    currentInside = current.y <= ymax;
+                    nextInside = next.y <= ymax;
+                    break;
+            }
+            
+            // 计算交点
+            auto computeIntersection = [](const Point& p1, const Point& p2, int edge, int xmin, int ymin, int xmax, int ymax) {
+                double x, y;
+                
+                switch (edge) {
+                    case LEFT:   // x = xmin
+                        if (p2.x == p1.x) // 垂直线
+                            return Point{xmin, p1.y};
+                        y = p1.y + (p2.y - p1.y) * (xmin - p1.x) / static_cast<double>(p2.x - p1.x);
+                        return Point{xmin, static_cast<int>(std::round(y))};
+                        
+                    case RIGHT:  // x = xmax
+                        if (p2.x == p1.x)
+                            return Point{xmax, p1.y};
+                        y = p1.y + (p2.y - p1.y) * (xmax - p1.x) / static_cast<double>(p2.x - p1.x);
+                        return Point{xmax, static_cast<int>(std::round(y))};
+                        
+                    case BOTTOM: // y = ymin
+                        if (p2.y == p1.y)
+                            return Point{p1.x, ymin};
+                        x = p1.x + (p2.x - p1.x) * (ymin - p1.y) / static_cast<double>(p2.y - p1.y);
+                        return Point{static_cast<int>(std::round(x)), ymin};
+                        
+                    case TOP:    // y = ymax
+                        if (p2.y == p1.y)
+                            return Point{p1.x, ymax};
+                        x = p1.x + (p2.x - p1.x) * (ymax - p1.y) / static_cast<double>(p2.y - p1.y);
+                        return Point{static_cast<int>(std::round(x)), ymax};
+                        
+                    default:
+                        return p1;
+                }
+            };
+            
+            // 根据不同情况处理
+            if (currentInside && nextInside) {
+                // 两点都在内部，添加终点
+                outputPolygon.push_back(next);
+            } else if (currentInside && !nextInside) {
+                // 当前点在内部，下一点在外部，添加交点
+                outputPolygon.push_back(computeIntersection(current, next, edge, xmin, ymin, xmax, ymax));
+            } else if (!currentInside && nextInside) {
+                // 当前点在外部，下一点在内部，添加交点和下一点
+                outputPolygon.push_back(computeIntersection(current, next, edge, xmin, ymin, xmax, ymax));
+                outputPolygon.push_back(next);
+            }
+            // 如果两点都在外部，不添加任何点
+        }
+        
+        return outputPolygon;
+    };
+    
+    // 依次对四条边进行裁剪
+    std::vector<Point> result = polygon;
+    result = clipAgainstLine(result, LEFT, xmin, ymin, xmax, ymax);
+    result = clipAgainstLine(result, RIGHT, xmin, ymin, xmax, ymax);
+    result = clipAgainstLine(result, BOTTOM, xmin, ymin, xmax, ymax);
+    result = clipAgainstLine(result, TOP, xmin, ymin, xmax, ymax);
+    
+    return result;
+}
+// 多边形裁剪算法 (Sutherland-Hodgman)
+void clipPolygon(std::vector<Point> clipWindow) {
+    if (clipWindow.size() != 2) return; // 需要两个点定义裁剪窗口
+
+    int xmin = std::min(clipWindow[0].x, clipWindow[1].x);
+    int xmax = std::max(clipWindow[0].x, clipWindow[1].x);
+    int ymin = std::min(clipWindow[0].y, clipWindow[1].y);
+    int ymax = std::max(clipWindow[0].y, clipWindow[1].y);
+    
+    int cnt = 0;
+    for (int i = 0; i < graphics.size() && cnt < graphics.size()+5; i++) {
+        graphic cur = graphics[i];
+        cnt++;
+        
+        // 只处理多边形
+        if (cur.mode != 4) continue;
+        
+        std::vector<Point> clippedPolygon = clipPolygonSutherlandHodgman(cur.points, xmin, ymin, xmax, ymax);
+        
+        if (clippedPolygon.size() < 3) { // 裁剪后不是有效多边形
+            graphics.erase(graphics.begin() + i);
+            i--;
+        } else {
+            cur.points = clippedPolygon;
+            graphics.erase(graphics.begin() + i);
+            graphics.push_back(cur);
+            i--;
+        }
+    }
+}
+
+
 
 void drawrec(GLFWwindow *window){
     double xpos,ypos;
@@ -184,13 +314,14 @@ void drawrec(GLFWwindow *window){
     render();
 }
 void crop_mouse_pressed(GLFWwindow* window, int button, int action, int mods){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS &&( mode == 5||mode==8)) {
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS &&( mode == 5||mode==8||mode==9)) {
         double xpos,ypos;
         detectposition(window,xpos,ypos);
         curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
         if(curpoints.size()==2){
             if(mode==5)cropcohen(curpoints);
             else if(mode==8)cropmiddle(curpoints);
+            else if(mode==9)clipPolygon(curpoints);
             curpoints.clear();
         }
     }
