@@ -11,17 +11,19 @@
 class Audio {
 public:
     // 播放WAV音效（同步方式）
-    static void playSound(const std::string& filePath, bool async = true) {
-        // 先停止上一个音效，避免阻塞
+    static void playSound(const std::string& filePath, bool async = true, bool allowMultiple = true) {
         PlaySound(NULL, 0, 0);
     
         DWORD flags = SND_FILENAME;
         if (async) {
             flags |= SND_ASYNC;
         }
+        if (allowMultiple) {
+            flags |= SND_ASYNC | SND_NOSTOP; // 添加SND_NOSTOP标志，不停止当前播放的声音
+        }
     
         if (!PlaySoundA(filePath.c_str(), NULL, flags)) {
-            std::cerr << "音效播放失败: " << filePath << std::endl;
+            std::cerr << "music failed: " << filePath << std::endl;
         }
     }
     
@@ -33,7 +35,7 @@ public:
         // 打开文件
         std::string openCommand = "open \"" + filePath + "\" type mpegvideo alias bgmusic";
         if (mciSendStringA(openCommand.c_str(), NULL, 0, NULL) != 0) {
-            std::cerr << "无法打开背景音乐: " << filePath << std::endl;
+            std::cerr << "can't open: " << filePath << std::endl;
             return;
         }
         
@@ -44,7 +46,7 @@ public:
         }
         
         if (mciSendStringA(playCommand.c_str(), NULL, 0, NULL) != 0) {
-            std::cerr << "无法播放背景音乐" << std::endl;
+            std::cerr << "can't play" << std::endl;
         }
     }
     

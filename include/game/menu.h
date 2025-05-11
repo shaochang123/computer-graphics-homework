@@ -98,13 +98,13 @@ void Menu::move(GLFWwindow* window, int key, int scancode, int action, int mods)
     if(key ==GLFW_KEY_LEFT){
         Idx--;
         if(Idx<0)Idx=0;
-        audio.playSound("resource/switch.wav"); // 播放音效
+        audio.playSound("resource/select.wav"); // 播放音效
         
     }
     if(key ==GLFW_KEY_RIGHT){
         Idx++;
         if(Idx>2)Idx=2;
-        audio.playSound("resource/switch.wav"); // 播放音效
+        audio.playSound("resource/select.wav"); // 播放音效
         
     }
 }

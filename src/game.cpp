@@ -48,21 +48,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if(gamemode==0){
            menu.move(window,key,scancode,action,mods);
            if(key == GLFW_KEY_Z){
-                audio.playSound("resource/switch.wav"); // 播放音效
+                
                 if(Idx==0){//进入回合
+                    audio.playSound("resource/item.wav"); // 播放音效
                     gamemode = 1;
-                    level = rand()%2;//目前只做了2回合
+                    int newlevel = rand()%2;
+                    while(newlevel==level)newlevel = rand()%2;
+                    level = newlevel;
                     
                     selectepoch(level);
                     total--;
                 }
                 if(Idx==1){//吃药，不增回合
+                    
                     if(food==0)return;
+                    audio.playSound("resource/heal.wav"); // 播放音效
                     food--;
                     gamemode=1;
                     you.hp+=40;
                     if(you.hp>=100)you.hp=100;
-                    level = rand()%2;//目前只做了2回合
+                    int newlevel = rand()%2;
+                    while(newlevel==level)newlevel = rand()%2;
+                    level = newlevel;
                     selectepoch(level);
                 }
                 if(Idx==2){//饶恕
@@ -112,13 +119,12 @@ void inline isgameover(GLFWwindow* window, bool arg) {//判断游戏结束或者
         playaudio.playBackgroundMusic("resource/gameover.wav"); // 播放音效
     } else {
         // 游戏胜利处理
-       // playaudio.playBackgroundMusic("resource/win.wav"); // 播放胜利音效
+       playaudio.playBackgroundMusic("resource/Congratulations.wav"); // 播放胜利音效
     }
     
     // 显示结束画面
     render(window);
     glfwSwapBuffers(window);
-    
     // 等待按键
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

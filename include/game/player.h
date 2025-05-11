@@ -182,12 +182,13 @@ void player::iscollided(){
     }
 }
 void player::switchstat(char statt){//转换模式
-    playaudio.playSound("resource/switch.wav"); // 播放音效
     if(statt=='b'){
+        // if(stat=='r')playaudio.playSound("resource/switch.wav"); // 播放音效
         stat=statt;
         y = DMenu + 7;
     }
     if(statt=='r'){
+        // if(stat=='b')playaudio.playSound("resource/switch.wav"); // 播放音效
         stat=statt;
     }
 }

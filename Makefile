@@ -29,7 +29,7 @@ RESOURCE := resource
 
 # define lib directory
 LIB		:= lib
-LIBRARIES	:= -lopengl32 -lglad -lglfw3dll      # add
+LIBRARIES	:= -lopengl32 -lglad -lglfw3 -lgdi32 -luser32 -lkernel32 -lshell32 -static
 ifeq ($(OS),Windows_NT)
 MAIN	:= main.exe
 SOURCEDIRS	:= $(SRC)
