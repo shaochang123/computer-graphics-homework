@@ -112,6 +112,46 @@ void render(){
 }
 void getcenposition(graphic &gra){
     int mode = gra.mode;
+    if(mode==2){
+        gra.cenx = gra.points[0].x;
+        gra.ceny = gra.points[0].y;
+        return;
+    }
+    if(mode==1){
+        // 圆弧模式: 计算圆弧上点的重心
+        if(gra.points.size() >= 3) {
+            Point center = gra.points[0];   // 圆心
+            Point start = gra.points[1];    // 起始点
+            Point end = gra.points[2];      // 终止点
+            
+            // 计算半径
+            double radius = sqrt(pow(start.x - center.x, 2) + pow(start.y - center.y, 2));
+            
+            // 计算起始角度和结束角度
+            double startAngle = atan2(start.y - center.y, start.x - center.x);
+            double endAngle = atan2(end.y - center.y, end.x - center.x);
+            
+            
+            if (startAngle < 0) startAngle += 2 * M_PI;//保证角度在0到2π之间
+            if(endAngle< 0) endAngle += 2*M_PI;//保证角度在0到2π之间
+            if(startAngle>endAngle)startAngle-=2*M_PI;//保证角度在0到2π之间
+            // 计算圆弧上点的平均位置（重心）
+            double sumX = 0, sumY = 0;
+            int numPoints = 1000;  // 用1000个点近似圆弧
+            
+            for(int i = 0; i <= numPoints; i++) {
+                double angle = startAngle + (endAngle - startAngle) * i / numPoints;
+                double x = center.x + radius * cos(angle);
+                double y = center.y + radius * sin(angle);
+                sumX += x;
+                sumY += y;
+            }
+            
+            gra.cenx = sumX / (numPoints + 1);
+            gra.ceny = sumY / (numPoints + 1);
+            return;
+        }
+    }
     double centerx = 0;
     double centery = 0;
     for (const auto& point : gra.points) {

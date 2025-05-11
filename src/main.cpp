@@ -167,8 +167,8 @@ void flushwindow() {
             double r = sqrt((start.x - center.x) * (start.x - center.x) + 
                          (start.y - center.y) * (start.y - center.y));
                       
-            double startRad = atan2(center.y - start.y, start.x - center.x);
-            double endRad = atan2(center.y - end.y, end.x - center.x);
+            double startRad = atan2(-center.y + start.y, start.x - center.x);
+            double endRad = atan2(-center.y + end.y, end.x - center.x);
             
             if (startRad < 0) startRad += 2 * M_PI;
             if (endRad < 0) endRad += 2 * M_PI;

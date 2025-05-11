@@ -10,7 +10,7 @@
 void checkAndDraw(int px, int py, Point center, double startRad, double endRad,int w,Color color) {
     if (px < 0 || px >= maxn || py < 0 || py >= maxn) return;
     int dx = px - center.x;
-    int dy = center.y - py;
+    int dy = -center.y + py;
     double theta = atan2(dy, dx);
     if (theta < 0) theta += 2 * M_PI;
     bool inArc = (theta >= startRad && theta <= endRad) || //在起始角度和终止角度之间
@@ -51,10 +51,11 @@ void drawArc(GLFWwindow *window){
     }
     else if(curpoints.size()==2){
         double r=sqrt((curpoints[1].x-curpoints[0].x)*(curpoints[1].x-curpoints[0].x)+(curpoints[1].y-curpoints[0].y)*(curpoints[1].y-curpoints[0].y));//半径
-        double startRad = atan2(curpoints[0].y - curpoints[1].y, curpoints[1].x - curpoints[0].x);
-        double endRad = atan2(curpoints[0].y - ypos, xpos - curpoints[0].x);
+        double startRad = atan2(-curpoints[0].y + curpoints[1].y, curpoints[1].x - curpoints[0].x);
+        double endRad = atan2(-curpoints[0].y + ypos, xpos - curpoints[0].x);
         if (startRad < 0) startRad += 2 * M_PI;//保证角度在0到2π之间
         if(endRad < 0) endRad += 2*M_PI;//保证角度在0到2π之间
+        // printf("startRad: %lf, endRad: %lf\n", startRad, endRad);
         drawarc(curpoints[0], r, startRad, endRad,curwidth);
     }
     render();

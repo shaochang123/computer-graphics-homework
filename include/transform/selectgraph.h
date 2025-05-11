@@ -140,14 +140,10 @@ void SelectGraphByClick(GLFWwindow* window, int button, int action) {
                 // 检查是否在圆弧上
                 if (abs(dist - radius) <= threshold) {
                     // 检查角度是否在范围内
-                    bool inAngleRange = false;
-                    if (endAngle < startAngle) {
-                        inAngleRange = (angle <= startAngle && angle >= endAngle);
-                    } else {
-                        inAngleRange = (angle <= startAngle || angle >= endAngle);
-                    }
+                    bool inArc = (angle >= startAngle && angle <= endAngle) || //在起始角度和终止角度之间
+                    (startAngle > endAngle && (angle >= startAngle || angle <= endAngle));//起始角度到终止角度跨越了0度，就要特殊考虑
                     
-                    if (inAngleRange) {
+                    if (inArc) {
                         shortestDistSq = 0;
                         graphSelected = true;
                     }
