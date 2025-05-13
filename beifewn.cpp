@@ -3,59 +3,6 @@
 #ifndef GRAPH_INIT_H_INCLUDED
 #include <graph/init.h>
 #endif
-// 检查点是否在控制点附近
-bool isNearControlPoint1(const Point& mousePos, const Point& controlPoint, int threshold = 10) {
-    Point control = applyTransform(controlPoint, graphics[ChooseIdx].transform);
-    int dx = mousePos.x - control.x;
-    int dy = mousePos.y - control.y;
-    return (dx*dx + dy*dy) <= threshold*threshold;
-}
-// 创建均匀B样条的节点向量
-std::vector<double> createUniformKnots1(int n, int k) {
-    // n: 控制点数量-1, k: B样条阶数
-    int m = n + k + 1; // 节点向量大小
-    std::vector<double> knots(m);
-    
-    for (int i = 0; i < m; i++) {
-        if (i < k) {
-            knots[i] = 0.0; // 开始的k个节点为0
-        } else if (i <= n) {
-            knots[i] = static_cast<double>(i - k + 1) / (n - k + 2); // 中间节点均匀分布
-        } else {
-            knots[i] = 1.0; // 最后的k个节点为1
-        }
-    }
-    
-    return knots;
-}
-// 计算B样条基函数 N_i,k(t) 的递归实现
-double bsplineBasisFunction1(int i, int k, double t, const std::vector<double>& knots) {
-    // 0阶B样条
-    if (k == 1) {
-        if ((t >= knots[i] && t < knots[i+1]) || 
-            (std::abs(t - knots[i+1]) < 1e-10 && std::abs(t - knots.back()) < 1e-10)) {
-            return 1.0;
-        }
-        return 0.0;
-    }
-    
-    // 计算k阶B样条基函数值
-    double d1 = 0.0, d2 = 0.0;
-    
-    // 左项
-    double denominator1 = knots[i+k-1] - knots[i];
-    if (std::abs(denominator1) > 1e-10) { // 避免除以0
-        d1 = (t - knots[i]) / denominator1 * bsplineBasisFunction1(i, k-1, t, knots);
-    }
-    
-    // 右项
-    double denominator2 = knots[i+k] - knots[i+1];
-    if (std::abs(denominator2) > 1e-10) { // 避免除以0
-        d2 = (knots[i+k] - t) / denominator2 * bsplineBasisFunction1(i+1, k-1, t, knots);
-    }
-    
-    return d1 + d2;
-}
 // 检测鼠标位置函数
 Point applyTransform1(const Point& p, const Matrix3x3& transform) {
     // 将点转换为齐次坐标
@@ -193,10 +140,14 @@ void SelectGraphByClick(GLFWwindow* window, int button, int action) {
                 // 检查是否在圆弧上
                 if (abs(dist - radius) <= threshold) {
                     // 检查角度是否在范围内
-                    bool inArc = (angle >= startAngle && angle <= endAngle) || //在起始角度和终止角度之间
-                    (startAngle > endAngle && (angle >= startAngle || angle <= endAngle));//起始角度到终止角度跨越了0度，就要特殊考虑
+                    bool inAngleRange = false;
+                    if (endAngle < startAngle) {
+                        inAngleRange = (angle <= startAngle && angle >= endAngle);
+                    } else {
+                        inAngleRange = (angle <= startAngle || angle >= endAngle);
+                    }
                     
-                    if (inArc) {
+                    if (inAngleRange) {
                         shortestDistSq = 0;
                         graphSelected = true;
                     }
@@ -310,76 +261,20 @@ void SelectGraphByClick(GLFWwindow* window, int button, int action) {
                     }
                 }
             }
-            else if(graphics[i].mode==10){
-                std::vector<Point> transformedPoints;
-                for (const auto& point : graphics[i].points) {
-                    transformedPoints.push_back(applyTransform1(point, graphics[i].transform));
-                }
-                // 检查点是否在控制点附近
-                for (const auto& point : transformedPoints) {
-                    double dist_sq = pow(clickX - point.x, 2) + pow(clickY - point.y, 2);
-                    if (dist_sq < shortestDistSq) {
-                        shortestDistSq = dist_sq;
-                        if (dist_sq <= threshold * threshold) {
-                            graphSelected = true;
-                        }
-                    }
-                }
-                int n = transformedPoints.size() - 1; // 控制点数量减1
-                
-                // 创建节点向量
-                std::vector<double> knots = createUniformKnots1(n, graphics[i].reserved);
-                
-                // t的步长，步长越小曲线越平滑
-                const double step = 0.001;
-                
-                // 从第一个有效参数开始
-                double tStart = knots[graphics[i].reserved-1];
-                double tEnd = knots[n+1]; // 最后一个有效节点
-                
-                Point prevPoint;
-                bool firstPoint = true;
-                
-                // 对参数t进行均匀采样
-                for (double t = tStart; t <= tEnd; t += step) {
-                    double x = 0.0, y = 0.0;
-                    
-                    // 计算曲线上的点
-                    for (int j = 0; j <= n; j++) {
-                        double basis = bsplineBasisFunction1(j, graphics[i].reserved, t, knots);
-                        x += basis * transformedPoints[j].x;
-                        y += basis * transformedPoints[j].y;
-                    }
-                    
-                    // 绘制点
-                    Point currentPoint = {static_cast<int>(std::round(x)), static_cast<int>(std::round(y))};
-                    double dist_sq = pow(clickX - currentPoint.x, 2) + pow(clickY - currentPoint.y, 2);
-                    if (dist_sq < shortestDistSq) {
-                        shortestDistSq = dist_sq;
-                        if (dist_sq <= threshold * threshold) {
-                            graphSelected = true;
-                        }
-                    }
-                    prevPoint = currentPoint;
-                    firstPoint = false;
-                    // 连接相邻点获得更平滑的曲线
-                    
-                }
-            }
+            
             // 如果找到比当前最近的图形，更新索引
             if (graphSelected && shortestDistSq < minDistance) {
                 minDistance = shortestDistSq;
                 closestGraphIdx = i;
             }
-            
         }
         
         // 更新选中的图形索引
         if (closestGraphIdx != -1) {
             ChooseIdx = closestGraphIdx;
-            printf("choose %d\n", closestGraphIdx);
+            printf("选择了图形 %d\n", closestGraphIdx);
         } else {
-            printf("no graph is chosen\n");
+            printf("没有选中任何图形\n");
         }
     }
 }
