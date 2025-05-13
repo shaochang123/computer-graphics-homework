@@ -2,20 +2,15 @@
 #define GRAPH_INIT_H_INCLUDED
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include<imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
 #include <iostream>
 #include <math.h>
-#include <map>
 #include <queue>
 #include <vector>
 #include <stack>
 #include <fstream>
-#include<cstdlib>
-#include<ctime>
-#include<thread>
-#include<atomic>
-void initRandom() {
-    srand(static_cast<unsigned>(time(nullptr)));
-}
 #define M_PI 3.14159265358979323846
 struct Point {int x, y;};
 struct Color{
@@ -25,6 +20,7 @@ struct Color{
 // 3x3变换矩阵 (使用齐次坐标系)
 struct Matrix3x3 {
     float m[3][3];
+    
     // 构造单位矩阵
     Matrix3x3() {
         m[0][0] = 1.0f; m[0][1] = 0.0f; m[0][2] = 0.0f;
@@ -59,14 +55,37 @@ struct graphic {
     int a=10;
     int b=10;
     bool isdefault = true;//是否是默认中心
+    int reserved;
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
-#define maxn 500 // 定义像素网格大小
+#define maxn 800 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
 int mode=0,curwidth=1,ChooseIdx = -1,cura=10,curb=10;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
+// B样条阶数（默认为4，即3次B样条）
+int bsplineOrder = 4;
 double xpos,ypos;//鼠标坐标
+// 应用变换矩阵到点
+Point applyTransform(const Point& p, const Matrix3x3& transform) {
+    // 将点转换为齐次坐标
+    float x = p.x;
+    float y = p.y;
+    float w = 1.0f;
+    
+    // 应用变换矩阵
+    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
+    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
+    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
+    
+    // 齐次坐标归一化（除以w）
+    if (newW != 0.0f) {
+        newX /= newW;
+        newY /= newW;
+    }
+    
+    return {static_cast<int>(newX), static_cast<int>(newY)};
+}
 #include<transform/selectgraph.h>
 void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
     for(int i =x-w+1;i<=x+w-1;i++){
@@ -78,9 +97,11 @@ void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
+    
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
+   
     xpos = xpos / width * maxn + 1;
     ypos = maxn - ypos / height * maxn + 1;
 }
@@ -93,8 +114,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glOrtho(0.0, maxn, 0.0, maxn, -1.0, 1.0);//设置正交投影
 }
 // 渲染函数，将g数组的像素网格渲染到窗口上
-void inline render(){
-    
+void render(){
     glClear(GL_COLOR_BUFFER_BIT);//清空颜色缓冲区
     glMatrixMode(GL_MODELVIEW);//设置模型视图矩阵
     glLoadIdentity();//重置当前的模型视图矩阵
@@ -113,48 +133,58 @@ void inline render(){
         }
     }
 }
-
-void ChangeWidth(int key,int action){
-    if(key == GLFW_KEY_UP && action == GLFW_PRESS) {
-        if(mode!=-1){
-            curwidth++;
-            std::cout << "Line width increased to: " << curwidth << std::endl;
-        }
-        else {
-            if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width++;
-            std::cout << "Line width increased to: " << graphics[ChooseIdx].width << std::endl;
-        }
-        
+void getcenposition(graphic &gra){
+    int mode = gra.mode;
+    if(mode==2){
+        gra.cenx = gra.points[0].x;
+        gra.ceny = gra.points[0].y;
+        return;
     }
-    else if(key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-        if(curwidth > 1 && mode!=-1) {
-            curwidth--;
-            std::cout << "Line width decreased to: " << curwidth << std::endl;
-        }
-        else{
-            if(graphics[ChooseIdx].width>1){
-                if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width--;
-                std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
+    if(mode==1){
+        // 圆弧模式: 计算圆弧上点的重心
+        if(gra.points.size() >= 3) {
+            Point center = gra.points[0];   // 圆心
+            Point start = gra.points[1];    // 起始点
+            Point end = gra.points[2];      // 终止点
+            
+            // 计算半径
+            double radius = sqrt(pow(start.x - center.x, 2) + pow(start.y - center.y, 2));
+            
+            // 计算起始角度和结束角度
+            double startAngle = atan2(start.y - center.y, start.x - center.x);
+            double endAngle = atan2(end.y - center.y, end.x - center.x);
+            
+            
+            if (startAngle < 0) startAngle += 2 * M_PI;//保证角度在0到2π之间
+            if(endAngle< 0) endAngle += 2*M_PI;//保证角度在0到2π之间
+            if(startAngle>endAngle)startAngle-=2*M_PI;//保证角度在0到2π之间
+            // 计算圆弧上点的平均位置（重心）
+            double sumX = 0, sumY = 0;
+            int numPoints = 1000;  // 用1000个点近似圆弧
+            
+            for(int i = 0; i <= numPoints; i++) {
+                double angle = startAngle + (endAngle - startAngle) * i / numPoints;
+                double x = center.x + radius * cos(angle);
+                double y = center.y + radius * sin(angle);
+                sumX += x;
+                sumY += y;
             }
+            
+            gra.cenx = sumX / (numPoints + 1);
+            gra.ceny = sumY / (numPoints + 1);
+            return;
         }
     }
-}
-void ChangeColor(int key,int action){
-    if(key == GLFW_KEY_R && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {1.0f, 0.0f, 0.0f}; // 红色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
-        std::cout << "Color changed to red" << std::endl;
+    double centerx = 0;
+    double centery = 0;
+    for (const auto& point : gra.points) {
+        centerx += point.x;
+        centery += point.y;
     }
-    else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {0.0f, 1.0f, 0.0f}; // 绿色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
-        std::cout << "Color changed to green" << std::endl;
-    }
-    else if(key == GLFW_KEY_B && action == GLFW_PRESS) {
-        if(mode!=-1)curcolor = {0.0f, 0.0f, 1.0f}; // 蓝色
-        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
-        std::cout << "Color changed to blue" << std::endl;
-    }
+    centerx /= gra.points.size();
+    centery /= gra.points.size();
+    gra.cenx = centerx;
+    gra.ceny = centery;
 }
 void saveImage(int key, int mods, int action){
     if(key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
@@ -200,7 +230,7 @@ void frontup(int key, int mods, int action){
 }
 GLFWwindow* init(int width, int height){
     if (!glfwInit()) return NULL;
-    GLFWwindow* window = glfwCreateWindow(width, height, "fight simulation", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "painting toolbox", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return NULL;
@@ -221,26 +251,7 @@ GLFWwindow* init(int width, int height){
     framebuffer_size_callback(window, width, height);
     return window;
 }
-// 应用变换矩阵到点
-Point applyTransform(const Point& p, const Matrix3x3& transform) {
-    // 将点转换为齐次坐标
-    float x = p.x;
-    float y = p.y;
-    float w = 1.0f;
-    
-    // 应用变换矩阵
-    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
-    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
-    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
-    
-    // 齐次坐标归一化（除以w）
-    if (newW != 0.0f) {
-        newX /= newW;
-        newY /= newW;
-    }
-    
-    return {static_cast<int>(newX), static_cast<int>(newY)};
-}
+
 void ui() {                  
     
      // 设置初始位置，但只影响首次显示
@@ -259,6 +270,8 @@ void ui() {
     if (ImGui::Button("Crop Mode(Cohen-Sutherland)")){mode=5;curpoints.clear();std::cout<<"Crop Mode(Cohen-Sutherland)"<<std::endl;}
     if (ImGui::Button("Crop Mode(middle point)")){mode=8;curpoints.clear();std::cout<<"Crop Mode(middle point)"<<std::endl;}
     ImGui::SameLine();
+    if (ImGui::Button("Crop Mode(Sutherland-Hodgman)")){mode=9;curpoints.clear();std::cout<<"Crop Mode(Sutherland-Hodgman)"<<std::endl;}
+    ImGui::SameLine();
     if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
     if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}
     ImGui::SameLine();
@@ -267,7 +280,8 @@ void ui() {
     if (ImGui::Button("Bezier Mode")){mode=6;curpoints.clear();std::cout<<"Bezier Mode"<<std::endl;}
     ImGui::SameLine();
     if (ImGui::Button("Select Mode")){mode=-1;curpoints.clear();std::cout<<"Select Mode"<<std::endl;}
-    
+    ImGui::SameLine();
+    if (ImGui::Button("Bspline Mode(Cox-de Boor)")){mode=10;curpoints.clear();std::cout<<"Bspline Mode"<<std::endl;}
     ImGui::Separator();
     
     // 颜色调整区域
@@ -328,14 +342,24 @@ void ui() {
             graphics[ChooseIdx].a = a;
         }
     }
+    // b样条阶数控制
+    int border = (mode != -1) ? bsplineOrder : 
+                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].reserved : 1;
+    if (ImGui::SliderInt("order", &border, 3, 12)) {
+        if (mode != -1) {
+            bsplineOrder = border;
+        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
+            graphics[ChooseIdx].reserved = border;
+        }
+    }         
     ImGui::Separator();
     
     // 显示当前模式
-    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop", "Bezier", "Line(middleline)", "Selection"};
-    int displayMode = (mode == -1) ? 8 : mode;
-    if (displayMode >= 0 && displayMode < 9) {
+    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop(Cohen)", "Bezier", "Line(middleline)", "crop(middle)","crop(Sutherland-Hodgman)","Bspline(Cox-de Boor)","Selection"};
+    int displayMode = (mode == -1) ? 11 : mode;
+    if (displayMode >= 0 && displayMode < 12) {
         ImGui::Text("Current Mode: %s", modeNames[displayMode]);
-        if(displayMode==8)ImGui::Text("%d",ChooseIdx);
+        if(displayMode==11)ImGui::Text("%d",ChooseIdx);
     }
     
     // 显示键盘快捷键信息
