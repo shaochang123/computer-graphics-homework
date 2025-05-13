@@ -67,6 +67,10 @@ OBJECTS		:= $(SOURCES:.cpp=.o)
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
 
+# 定义资源文件
+RCFILE := resource.rc
+RESOBJ := resource.o
+
 #
 # The following part of the makefile is generic; it can be used to
 # build any executable just by changing the definitions above and by
@@ -81,8 +85,8 @@ all: $(OUTPUT) $(MAIN)
 $(OUTPUT):
 	$(MD) $(OUTPUT)
 
-$(MAIN): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS) $(LIBRARIES)
+$(MAIN): $(OBJECTS) $(RESOBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(RESOBJ) $(LFLAGS) $(LIBS) $(LIBRARIES) -lwinmm
 
 # include all .d files
 -include $(DEPS)
@@ -95,11 +99,16 @@ $(MAIN): $(OBJECTS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
+$(RESOBJ): $(RCFILE)
+	windres -i $(RCFILE) -o $(RESOBJ)
+
 .PHONY: clean
 clean:
 	$(RM) $(OUTPUTMAIN)
 	$(RM) $(call FIXPATH,$(OBJECTS))
 	$(RM) $(call FIXPATH,$(DEPS))
+	$(RM) $(RESOBJ)
+	if exist $(OUTPUTRES) rd /s /q $(OUTPUTRES)
 	@echo Cleanup complete!
 
 run: all
