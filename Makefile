@@ -24,9 +24,12 @@ SRC		:= src
 # define include directory
 INCLUDE	:= include
 
+# define resource directory
+RESOURCE := resource
+
 # define lib directory
 LIB		:= lib
-LIBRARIES	:= -lopengl32 -lglad -lglfw3dll      # add
+LIBRARIES	:= -lopengl32 -lglad -lglfw3 -lgdi32 -luser32 -lkernel32 -lshell32 -static
 ifeq ($(OS),Windows_NT)
 MAIN	:= main.exe
 SOURCEDIRS	:= $(SRC)
@@ -35,6 +38,8 @@ LIBDIRS		:= $(LIB)
 FIXPATH = $(subst /,\,$1)
 RM			:= del /q /f
 MD	:= mkdir
+CP  := copy
+XCOPY := xcopy /e /i /y
 else
 MAIN	:= main
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
@@ -43,29 +48,27 @@ LIBDIRS		:= $(shell find $(LIB) -type d)
 FIXPATH = $1
 RM = rm -f
 MD	:= mkdir -p
+CP  := cp
+XCOPY := cp -r
 endif
 
 # define any directories containing header files other than /usr/include
-INCLUDES := -Iinclude -Iinclude/imgui -Iinclude/imgui/backends
+INCLUDES	:= $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
 
 # define the C libs
 LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%)) -lopengl32
 
 # define the C source files
-SOURCES := $(wildcard $(SRC)/*.cpp) \
-           include/imgui/imgui.cpp \
-           include/imgui/imgui_draw.cpp \
-		   include/imgui/imgui_demo.cpp \
-           include/imgui/imgui_tables.cpp \
-           include/imgui/imgui_widgets.cpp \
-		   include/imgui/imgui_impl_glfw.cpp \
-		   include/imgui/imgui_impl_opengl3.cpp
+SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
 
 # define the C object files
 OBJECTS		:= $(SOURCES:.cpp=.o)
 
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
+
+# define resource files
+RESOURCE_FILES := $(shell if exist $(RESOURCE) dir /b /s $(RESOURCE) | findstr /v /i ".git")
 
 #
 # The following part of the makefile is generic; it can be used to
@@ -74,15 +77,23 @@ DEPS		:= $(OBJECTS:.o=.d)
 #
 
 OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
+OUTPUTRES   := $(call FIXPATH,$(OUTPUT)/$(RESOURCE))
 
-all: $(OUTPUT) $(MAIN)
+all: $(OUTPUT) $(MAIN) resources
 	@echo Executing 'all' complete!
 
 $(OUTPUT):
 	$(MD) $(OUTPUT)
 
+resources: $(OUTPUT)
+	@if exist $(RESOURCE) ( \
+		if not exist $(OUTPUTRES) $(MD) $(OUTPUTRES) \
+		& $(XCOPY) $(call FIXPATH,$(RESOURCE)) $(OUTPUTRES) \
+	)
+	@echo Resource files copied!
+
 $(MAIN): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS) $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS) $(LIBRARIES) -lwinmm
 
 # include all .d files
 -include $(DEPS)
@@ -95,11 +106,12 @@ $(MAIN): $(OBJECTS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
-.PHONY: clean
+.PHONY: clean resources
 clean:
 	$(RM) $(OUTPUTMAIN)
 	$(RM) $(call FIXPATH,$(OBJECTS))
 	$(RM) $(call FIXPATH,$(DEPS))
+	if exist $(OUTPUTRES) rd /s /q $(OUTPUTRES)
 	@echo Cleanup complete!
 
 run: all
