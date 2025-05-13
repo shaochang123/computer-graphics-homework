@@ -70,6 +70,10 @@ DEPS		:= $(OBJECTS:.o=.d)
 # define resource files
 RESOURCE_FILES := $(shell if exist $(RESOURCE) dir /b /s $(RESOURCE) | findstr /v /i ".git")
 
+# define resource file
+RCFILE := resource.rc
+RESOBJ := resource.o
+
 #
 # The following part of the makefile is generic; it can be used to
 # build any executable just by changing the definitions above and by
@@ -92,8 +96,8 @@ resources: $(OUTPUT)
 	)
 	@echo Resource files copied!
 
-$(MAIN): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS) $(LIBRARIES) -lwinmm
+$(MAIN): $(OBJECTS) $(RESOBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(RESOBJ) $(LFLAGS) $(LIBS) $(LIBRARIES) -lwinmm
 
 # include all .d files
 -include $(DEPS)
@@ -106,11 +110,15 @@ $(MAIN): $(OBJECTS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
+$(RESOBJ): $(RCFILE)
+	windres -i $(RCFILE) -o $(RESOBJ)
+
 .PHONY: clean resources
 clean:
 	$(RM) $(OUTPUTMAIN)
 	$(RM) $(call FIXPATH,$(OBJECTS))
 	$(RM) $(call FIXPATH,$(DEPS))
+	$(RM) $(RESOBJ)
 	if exist $(OUTPUTRES) rd /s /q $(OUTPUTRES)
 	@echo Cleanup complete!
 

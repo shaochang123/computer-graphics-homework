@@ -8,6 +8,7 @@
 #include<graph/Crop.h>
 #include<graph/FullCircle.h>
 #include<transform/translation.h>
+ // 路径要根据您的图标位置调整
 int level;//现在是第几轮
 int total=10;//总共多少轮
 int Idx=0;//选择菜单时的指向
