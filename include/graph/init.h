@@ -2,9 +2,6 @@
 #define GRAPH_INIT_H_INCLUDED
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
-#include<imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
 #include <iostream>
 #include <math.h>
 #include <map>
@@ -56,43 +53,14 @@ struct graphic {
     Color color = {0, 0, 0};        // 图形颜色
     int width = 1;                  // 线宽
     Matrix3x3 transform = Matrix3x3();  // 初始化为单位矩阵
-    double cenx=0;
-    double ceny=0;
-    int key = 0;//专属于bezier
-    int a=10;
-    int b=10;
-    bool isdefault = true;//是否是默认中心
-    int reserved;
 };
 std::vector<Point>curpoints;//当前图形的所有点
 std::vector<graphic>graphics;//所有图形
 std::stack<graphic>graphicsbackup;//撤回的图形
 #define maxn 500 // 定义像素网格大小
 Color g[maxn][maxn],curcolor={0.0,0.0,0.0},selectedColor = {129.0/255,148.0/255,240.0/255};
-int mode=0,curwidth=1,ChooseIdx = -1,cura=10,curb=10;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
-// B样条阶数（默认为4，即3次B样条）
-int bsplineOrder = 4;
+int mode=0,curwidth=1,ChooseIdx = -1;//g是到时候显示在窗口上的像素网格，cnt是每个图形的时间戳（为了撤回），mode是模式，w是线宽
 double xpos,ypos;//鼠标坐标
-// 应用变换矩阵到点
-Point applyTransform(const Point& p, const Matrix3x3& transform) {
-    // 将点转换为齐次坐标
-    float x = p.x;
-    float y = p.y;
-    float w = 1.0f;
-    
-    // 应用变换矩阵
-    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
-    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
-    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
-    
-    // 齐次坐标归一化（除以w）
-    if (newW != 0.0f) {
-        newX /= newW;
-        newY /= newW;
-    }
-    
-    return {static_cast<int>(newX), static_cast<int>(newY)};
-}
 #include<transform/selectgraph.h>
 void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
     for(int i =x-w+1;i<=x+w-1;i++){
@@ -104,11 +72,9 @@ void setpixel(int x,int y, int w=1,Color colorr={0.0,0.0,0.0}){
 // 转换函数，将窗口坐标转换为g数组的索引
 void detectposition(GLFWwindow *window, double &xpos, double &ypos) {
     glfwGetCursorPos(window, &xpos, &ypos);
-    
     // 将窗口坐标转换为OpenGL坐标
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-   
     xpos = xpos / width * maxn + 1;
     ypos = maxn - ypos / height * maxn + 1;
 }
@@ -141,58 +107,48 @@ void inline render(){
         }
     }
 }
-void getcenposition(graphic &gra){
-    int mode = gra.mode;
-    if(mode==2){
-        gra.cenx = gra.points[0].x;
-        gra.ceny = gra.points[0].y;
-        return;
+
+void ChangeWidth(int key,int action){
+    if(key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        if(mode!=-1){
+            curwidth++;
+            std::cout << "Line width increased to: " << curwidth << std::endl;
+        }
+        else {
+            if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width++;
+            std::cout << "Line width increased to: " << graphics[ChooseIdx].width << std::endl;
+        }
+        
     }
-    if(mode==1){
-        // 圆弧模式: 计算圆弧上点的重心
-        if(gra.points.size() >= 3) {
-            Point center = gra.points[0];   // 圆心
-            Point start = gra.points[1];    // 起始点
-            Point end = gra.points[2];      // 终止点
-            
-            // 计算半径
-            double radius = sqrt(pow(start.x - center.x, 2) + pow(start.y - center.y, 2));
-            
-            // 计算起始角度和结束角度
-            double startAngle = atan2(start.y - center.y, start.x - center.x);
-            double endAngle = atan2(end.y - center.y, end.x - center.x);
-            
-            
-            if (startAngle < 0) startAngle += 2 * M_PI;//保证角度在0到2π之间
-            if(endAngle< 0) endAngle += 2*M_PI;//保证角度在0到2π之间
-            if(startAngle>endAngle)startAngle-=2*M_PI;//保证角度在0到2π之间
-            // 计算圆弧上点的平均位置（重心）
-            double sumX = 0, sumY = 0;
-            int numPoints = 1000;  // 用1000个点近似圆弧
-            
-            for(int i = 0; i <= numPoints; i++) {
-                double angle = startAngle + (endAngle - startAngle) * i / numPoints;
-                double x = center.x + radius * cos(angle);
-                double y = center.y + radius * sin(angle);
-                sumX += x;
-                sumY += y;
+    else if(key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        if(curwidth > 1 && mode!=-1) {
+            curwidth--;
+            std::cout << "Line width decreased to: " << curwidth << std::endl;
+        }
+        else{
+            if(graphics[ChooseIdx].width>1){
+                if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].width--;
+                std::cout << "Line width decreased to: " << graphics[ChooseIdx].width << std::endl;
             }
-            
-            gra.cenx = sumX / (numPoints + 1);
-            gra.ceny = sumY / (numPoints + 1);
-            return;
         }
     }
-    double centerx = 0;
-    double centery = 0;
-    for (const auto& point : gra.points) {
-        centerx += point.x;
-        centery += point.y;
+}
+void ChangeColor(int key,int action){
+    if(key == GLFW_KEY_R && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {1.0f, 0.0f, 0.0f}; // 红色
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {1.0, 0.0, 0.0};
+        std::cout << "Color changed to red" << std::endl;
     }
-    centerx /= gra.points.size();
-    centery /= gra.points.size();
-    gra.cenx = centerx;
-    gra.ceny = centery;
+    else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {0.0f, 1.0f, 0.0f}; // 绿色
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 1.0, 0.0};
+        std::cout << "Color changed to green" << std::endl;
+    }
+    else if(key == GLFW_KEY_B && action == GLFW_PRESS) {
+        if(mode!=-1)curcolor = {0.0f, 0.0f, 1.0f}; // 蓝色
+        else if(ChooseIdx>=0&&ChooseIdx<graphics.size())graphics[ChooseIdx].color = {0.0, 0.0, 1.0};
+        std::cout << "Color changed to blue" << std::endl;
+    }
 }
 void saveImage(int key, int mods, int action){
     if(key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
@@ -259,157 +215,24 @@ GLFWwindow* init(int width, int height){
     framebuffer_size_callback(window, width, height);
     return window;
 }
-
-void ui() {                  
+// 应用变换矩阵到点
+Point applyTransform(const Point& p, const Matrix3x3& transform) {
+    // 将点转换为齐次坐标
+    float x = p.x;
+    float y = p.y;
+    float w = 1.0f;
     
-     // 设置初始位置，但只影响首次显示
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 420), ImGuiCond_FirstUseEver);
-    ImGuiWindowFlags window_flags = 0;
-    ImGui::Begin("Drawing Toolbox",nullptr, window_flags);
-    // 模式选择按钮区域
-    ImGui::Text("Drawing Mode:");
-    if (ImGui::Button("Line Mode(Bresenham)")){mode=0;curpoints.clear();std::cout<<"Line(Bresenham) Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Line Mode(middleline)")){mode=7;curpoints.clear();std::cout<<"Line(middleline) Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Arc Mode")){mode=1;curpoints.clear();std::cout<<"Arc Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Crop Mode(Cohen-Sutherland)")){mode=5;curpoints.clear();std::cout<<"Crop Mode(Cohen-Sutherland)"<<std::endl;}
-    if (ImGui::Button("Crop Mode(middle point)")){mode=8;curpoints.clear();std::cout<<"Crop Mode(middle point)"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Crop Mode(Sutherland-Hodgman)")){mode=9;curpoints.clear();std::cout<<"Crop Mode(Sutherland-Hodgman)"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Circle Mode")){mode=2;curpoints.clear();std::cout<<"Circle Mode"<<std::endl;}
-    if (ImGui::Button("Fill Mode")) {mode=3;curpoints.clear();std::cout<<"Fill Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Polygon Mode")){mode=4;curpoints.clear();std::cout<<"Polygon Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Bezier Mode")){mode=6;curpoints.clear();std::cout<<"Bezier Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Select Mode")){mode=-1;curpoints.clear();std::cout<<"Select Mode"<<std::endl;}
-    ImGui::SameLine();
-    if (ImGui::Button("Bspline Mode(Cox-de Boor)")){mode=10;curpoints.clear();std::cout<<"Bspline Mode"<<std::endl;}
-    ImGui::Separator();
+    // 应用变换矩阵
+    float newX = x * transform.m[0][0] + y * transform.m[0][1] + w * transform.m[0][2];
+    float newY = x * transform.m[1][0] + y * transform.m[1][1] + w * transform.m[1][2];
+    float newW = x * transform.m[2][0] + y * transform.m[2][1] + w * transform.m[2][2];
     
-    // 颜色调整区域
-    ImGui::Text("Color Control:");
-    
-    // 创建临时变量存储当前颜色值（值范围0.0-1.0）
-    static float color[3] = {0.0f, 0.0f, 0.0f};
-    
-    // 根据模式和选择状态获取当前颜色
-    if (mode != -1) {
-        // 在绘图模式下，使用当前颜色
-        color[0] = curcolor.r;
-        color[1] = curcolor.g;
-        color[2] = curcolor.b;
-    } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-        // 在选择模式下，使用选中图形的颜色
-        color[0] = graphics[ChooseIdx].color.r;
-        color[1] = graphics[ChooseIdx].color.g;
-        color[2] = graphics[ChooseIdx].color.b;
+    // 齐次坐标归一化（除以w）
+    if (newW != 0.0f) {
+        newX /= newW;
+        newY /= newW;
     }
     
-    // 显示滑块控制RGB颜色
-    bool colorChanged = false;
-    colorChanged |= ImGui::SliderFloat("Red", &color[0], 0.0f, 1.0f);
-    colorChanged |= ImGui::SliderFloat("Green", &color[1], 0.0f, 1.0f);
-    colorChanged |= ImGui::SliderFloat("Blue", &color[2], 0.0f, 1.0f);
-    
-    // 根据模式将更改应用到相应的颜色变量
-    if (colorChanged) {
-        if (mode != -1) {
-            // 更新当前绘图颜色
-            curcolor = {color[0], color[1], color[2]};
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            // 更新选中图形的颜色
-            graphics[ChooseIdx].color = {color[0], color[1], color[2]};
-        }
-    }
-    
-    ImGui::Separator();
-    
-    // 线宽控制
-    int wid = (mode != -1) ? curwidth : 
-                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].width : 1;
-    if (ImGui::SliderInt("Line Width", &wid, 1, 10)) {
-        if (mode != -1) {
-            curwidth = wid;
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            graphics[ChooseIdx].width = wid;
-        }
-    }
-    // 线型控制
-    int a = (mode != -1) ? cura : 
-                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].a : 1;
-    if (ImGui::SliderInt("Line type", &a, 1, 10)) {
-        if (mode != -1) {
-            cura = a;
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            graphics[ChooseIdx].a = a;
-        }
-    }
-    // b样条阶数控制
-    int border = (mode != -1) ? bsplineOrder : 
-                (ChooseIdx >= 0 && ChooseIdx < graphics.size()) ? graphics[ChooseIdx].reserved : 1;
-    if (ImGui::SliderInt("order", &border, 3, 12)) {
-        if (mode != -1) {
-            bsplineOrder = border;
-        } else if (ChooseIdx >= 0 && ChooseIdx < graphics.size()) {
-            graphics[ChooseIdx].reserved = border;
-        }
-    }         
-    ImGui::Separator();
-    
-    // 显示当前模式
-    const char* modeNames[] = {"Line(Bresenham)", "Arc", "Circle", "Fill", "Polygon", "Crop(Cohen)", "Bezier", "Line(middleline)", "crop(middle)","crop(Sutherland-Hodgman)","Bspline(Cox-de Boor)","Selection"};
-    int displayMode = (mode == -1) ? 11 : mode;
-    if (displayMode >= 0 && displayMode < 12) {
-        ImGui::Text("Current Mode: %s", modeNames[displayMode]);
-        if(displayMode==11)ImGui::Text("%d",ChooseIdx);
-    }
-    
-    // 显示键盘快捷键信息
-    ImGui::Separator();
-    ImGui::Text("Keyboard Shortcuts:");
-    ImGui::BulletText("Ctrl+S: Save image");
-    ImGui::BulletText("Ctrl+Z: Undo");
-    ImGui::BulletText("Ctrl+Y: Redo");
-    
-    ImGui::End();
-}
-// 计算3x3矩阵的逆矩阵
-Matrix3x3 inverse(const Matrix3x3& mat) {
-    Matrix3x3 inv;
-    float m[3][3];
-    // 拷贝原矩阵
-    for(int i=0;i<3;i++)
-        for(int j=0;j<3;j++)
-            m[i][j] = mat.m[i][j];
-
-    float det =
-        m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) -
-        m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
-        m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
-
-    if (fabs(det) < 1e-8) // 不可逆
-        return Matrix3x3();
-
-    float invDet = 1.0f / det;
-
-    inv.m[0][0] =  (m[1][1]*m[2][2]-m[1][2]*m[2][1]) * invDet;
-    inv.m[0][1] = -(m[0][1]*m[2][2]-m[0][2]*m[2][1]) * invDet;
-    inv.m[0][2] =  (m[0][1]*m[1][2]-m[0][2]*m[1][1]) * invDet;
-
-    inv.m[1][0] = -(m[1][0]*m[2][2]-m[1][2]*m[2][0]) * invDet;
-    inv.m[1][1] =  (m[0][0]*m[2][2]-m[0][2]*m[2][0]) * invDet;
-    inv.m[1][2] = -(m[0][0]*m[1][2]-m[0][2]*m[1][0]) * invDet;
-
-    inv.m[2][0] =  (m[1][0]*m[2][1]-m[1][1]*m[2][0]) * invDet;
-    inv.m[2][1] = -(m[0][0]*m[2][1]-m[0][1]*m[2][0]) * invDet;
-    inv.m[2][2] =  (m[0][0]*m[1][1]-m[0][1]*m[1][0]) * invDet;
-
-    return inv;
+    return {static_cast<int>(newX), static_cast<int>(newY)};
 }
 #endif // GRAPH_INIT_H_INCLUDED

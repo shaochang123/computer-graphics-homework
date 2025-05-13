@@ -53,20 +53,13 @@ XCOPY := cp -r
 endif
 
 # define any directories containing header files other than /usr/include
-INCLUDES := -Iinclude -Iinclude/imgui -Iinclude/imgui/backends
+INCLUDES	:= $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
 
 # define the C libs
 LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%)) -lopengl32
 
 # define the C source files
-SOURCES := $(wildcard $(SRC)/*.cpp) \
-           include/imgui/imgui.cpp \
-           include/imgui/imgui_draw.cpp \
-		   include/imgui/imgui_demo.cpp \
-           include/imgui/imgui_tables.cpp \
-           include/imgui/imgui_widgets.cpp \
-		   include/imgui/imgui_impl_glfw.cpp \
-		   include/imgui/imgui_impl_opengl3.cpp
+SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
 
 # define the C object files
 OBJECTS		:= $(SOURCES:.cpp=.o)
