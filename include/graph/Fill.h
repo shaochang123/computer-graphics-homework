@@ -1,5 +1,5 @@
-#ifndef GRAPH_FILL_H_INCLUDED
-#define GRAPH_FILL_H_INCLUDED
+#ifndef GRAPH_FILL_H
+#define GRAPH_FILL_H
 #ifndef GRAPH_INIT_H_INCLUDED
 #include<graph/init.h>
 #endif
@@ -35,5 +35,11 @@ void Fill_Mouse_Pressed(GLFWwindow* window, int button, int action){
         curpoints.clear();//清空当前图形的点
     }
 }
-
+void Fill_Keyboard_Pressed(int key, int action){
+    if(key == GLFW_KEY_F && action == GLFW_PRESS){//切换到填充模式
+        mode=3;
+        curpoints.clear(); // 清空当前点
+        std::cout<<"Fill Mode"<<std::endl;
+    }
+}
 #endif

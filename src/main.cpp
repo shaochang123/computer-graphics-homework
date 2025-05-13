@@ -6,7 +6,6 @@
 #include<graph/FullCircle.h>
 #include<transform/translation.h>
 #include<graph/bezier.h>
-#include<graph/bspline.h>
 // 鼠标点击回调函数
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
@@ -26,8 +25,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     Bezier_Edit_Mouse_Handler(window,button,action,mods);
     newcenter(window,button,action,mods);
     crop_mouse_pressed(window,button,action,mods);
-    BSpline_Mouse_Pressed(window,button,action);
-    BSpline_Edit_Mouse_Handler(window,button,action,mods);
 }
 // 键盘回调函数
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -89,12 +86,11 @@ int main() {
         else if(mode==1) drawArc(window);//渲染圆弧
         else if(mode==2) drawFullArc(window);//渲染整圆
         else if(mode==4) drawPolygon(window);//渲染填充
-        else if(mode==5||mode==8||mode==9)drawrec(window);
+        else if(mode==5||mode==8)drawrec(window);
         else if(mode==6) drawBezier(window);//渲染贝塞尔曲线
-        else if(mode==10)drawBSpline(window);//渲染B样条曲线
         else render();
         if(mode!=-1)ChooseIdx = -1;
-        if(mode==-1&&ChooseIdx!=-1&&(graphics[ChooseIdx].mode==6||graphics[ChooseIdx].mode==10)&&selectedPointIndex!=-1){
+        if(mode==-1&&ChooseIdx!=-1&&graphics[ChooseIdx].mode==6&&selectedPointIndex!=-1){
             // 1. 获取鼠标位置
                 detectposition(window, xpos, ypos);
                 Point mousePos = {static_cast<int>(xpos), static_cast<int>(ypos)};
@@ -209,18 +205,6 @@ void flushwindow() {
                 if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
             }
             drawBezierCurve(transformedPoints,graphics[i].width,graphics[i].color);
-        }
-        else if(graphics[i].mode==10){
-            // 使用reserved字段存储的阶数，如果没有则默认为4
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            for(int j=0;j<transformedPoints.size()-1;j++){
-                if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
-            }
-            int order = graphics[i].reserved > 0 ? graphics[i].reserved : 4;
-            drawBSplineCurve(transformedPoints, graphics[i].width, graphics[i].color, order);
         }
         if(i == ChooseIdx) {
             graphics[i].color = choosecolor;
