@@ -167,29 +167,9 @@ void player::iscollided(){
         }
     }
     if(!isMoving){
-        int playerLeft = x - 4, playerRight = x + 4;
-        int playerTop = y + 4, playerBottom = y - 4;
+        
         for(auto& b : orangebone){
-            // 竖直骨头的前后帧x坐标
-            int prevX = applyTransform(b.g.points[0], b.prevtransform).x;
-            int nextX = applyTransform(b.g.points[0], b.g.transform).x;
-            // 线段y区间
-            int boneY1 = applyTransform(b.g.points[0], b.g.transform).y;
-            int boneY2 = applyTransform(b.g.points[1], b.g.transform).y;
-            int boneTop = std::max(boneY1, boneY2);
-            int boneBottom = std::min(boneY1, boneY2);
-
-            // 只要骨头x区间和玩家x区间有交集，且y区间有交集，就判定为碰撞
-            int boneLeft = std::min(prevX-b.g.width, nextX-b.g.width);
-            int boneRight = std::max(prevX+b.g.width, nextX+b.g.width);
-
-            bool xOverlap = !(boneRight < playerLeft || boneLeft > playerRight);
-            bool yOverlap = !(boneTop < playerBottom || boneBottom > playerTop);
-
-            if(xOverlap && yOverlap){
-                drophp();
-                break;
-            }
+           if(b.detectPlayer(x,y))drophp();
         }
     }
     int steps = std::max(abs(x - oldx), abs(y - oldy)) * 3; // 采样点数量

@@ -52,8 +52,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 if(Idx==0){//进入回合
                     audio.playSound("resource/item.wav"); // 播放音效
                     gamemode = 1;
-                    int newlevel = rand()%2;
-                    while(newlevel==level)newlevel = rand()%2;
+                    int newlevel = rand()%3;
+                    while(newlevel==level)newlevel = rand()%3;
                     level = newlevel;
                     
                     selectepoch(level);
@@ -67,8 +67,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                     gamemode=1;
                     you.hp+=40;
                     if(you.hp>=100)you.hp=100;
-                    int newlevel = rand()%2;
-                    while(newlevel==level)newlevel = rand()%2;
+                    int newlevel = rand()%3;
+                    while(newlevel==level)newlevel = rand()%3;
                     level = newlevel;
                     selectepoch(level);
                 }
