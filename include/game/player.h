@@ -142,6 +142,7 @@ void player::move(GLFWwindow* window){
 void player::iscollided(){
     // 连续碰撞检测 - 检查移动路径上是否有骨头
     // 沿着移动路径采样多个点，检查是否与骨头碰撞
+    bool isMoving = (x != oldx || y != oldy);
     if(x==oldx&&y==oldy){//没动，如果还是原来的方案，不会有采样点
         int oldX=oldx;
         int oldY=oldy;
@@ -149,6 +150,47 @@ void player::iscollided(){
             drophp();
         }
         return;
+    }
+    // 像素级检测 (仅用于补充基础检测)
+    if (isMoving) {
+        int checkX = x;
+        int checkY = y;
+        
+        // 检查当前位置的碰撞
+        if (checkX >= 0 && checkX < maxn && checkY >= 0 && checkY < maxn) {
+            
+            // 蓝色骨头 - 静止时不扣血
+            if (g[checkY][checkX].b > 0.9f && g[checkY][checkX].r < 0.3f && g[checkY][checkX].g < 0.3f) {
+                drophp();
+            }
+            
+        }
+    }
+    if(!isMoving){
+        int playerLeft = x - 4, playerRight = x + 4;
+        int playerTop = y + 4, playerBottom = y - 4;
+        for(auto& b : orangebone){
+            // 竖直骨头的前后帧x坐标
+            int prevX = applyTransform(b.g.points[0], b.prevtransform).x;
+            int nextX = applyTransform(b.g.points[0], b.g.transform).x;
+            // 线段y区间
+            int boneY1 = applyTransform(b.g.points[0], b.g.transform).y;
+            int boneY2 = applyTransform(b.g.points[1], b.g.transform).y;
+            int boneTop = std::max(boneY1, boneY2);
+            int boneBottom = std::min(boneY1, boneY2);
+
+            // 只要骨头x区间和玩家x区间有交集，且y区间有交集，就判定为碰撞
+            int boneLeft = std::min(prevX-b.g.width, nextX-b.g.width);
+            int boneRight = std::max(prevX+b.g.width, nextX+b.g.width);
+
+            bool xOverlap = !(boneRight < playerLeft || boneLeft > playerRight);
+            bool yOverlap = !(boneTop < playerBottom || boneBottom > playerTop);
+
+            if(xOverlap && yOverlap){
+                drophp();
+                break;
+            }
+        }
     }
     int steps = std::max(abs(x - oldx), abs(y - oldy)) * 3; // 采样点数量
     if (steps > 1) {
@@ -175,11 +217,11 @@ void player::iscollided(){
             
             if (pathCollided) {
                 drophp();
-                hp--;
                 break;
             }
         }
     }
+    
 }
 void player::switchstat(char statt){//转换模式
     if(statt=='b'){

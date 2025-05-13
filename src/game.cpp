@@ -138,6 +138,8 @@ void inline isgameover(GLFWwindow* window, bool arg) {//判断游戏结束或者
             gamemode = 0;
             Idx = 0;
             bone.clear();
+            bluebone.clear();
+            orangebone.clear();
             total = 10; // 胜利后重置总回合数
             food = 5; // 重置食物数量
             stime = glfwGetTime();

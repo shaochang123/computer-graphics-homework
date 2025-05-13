@@ -15,15 +15,21 @@ void selectepoch(int level){
         for(int i=0;i<20;i++){//召唤骨头
             
             float sp = rand()%50;
-            graphic g = {{{50-i*100, 100},{50-i*100,250}}, 0, {1.0f,1.0f,1.0f},1};// 在左边创建一个骨头
+            graphic g = {{{50-i*100, 100},{50-i*100,250}}, 0, {1.0f,1.0f,1.0f},2};// 在左边创建一个骨头
             normalbone b(g,sp);
             bone.push_back(b);
+        }
+        for(int i=0;i<20;i++){//召唤骨头
+            float sp = rand()%50;
+            graphic g = {{{450+i*100, 100},{450+i*100,250}}, 0, {0.0f,0.0f,1.0f},2};// 在右边创建一个蓝色骨头
+            normalbone b(g,sp);
+            bluebone.push_back(b);
         }
     }
     else if(level==1){//回合1，此时玩家是蓝色模式
         you.switchstat('b');
         for(int i=0;i<40;i++){//召唤骨头
-            int height = (rand()%70)+105;
+            int height = (rand()%60)+105;
             graphic g = {{{50-i*290, 100},{50-i*290,height}}, 0, {1.0f,1.0f,1.0f},3};// 在左边创建一个骨头
             graphic g1 = {{{450+i*290,100},{450+i*290,height}}, 0, {1.0f,1.0f,1.0f},3};// 在右边创建一个骨头
             graphic g2 = {{{50-i*290, height+30},{50-i*290,250}}, 0, {1.0f,1.0f,1.0f},3};// 在左边创建一个骨头
@@ -56,12 +62,20 @@ void inline processepoch(int level){
                 bone[j].move(stime-bone[j].st,200);
                 bone[j].render();
             }
+            for(int j=0;j<bluebone.size();j++){
+                bluebone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+
+                bluebone[j].move(stime-bluebone[j].st,200,'l');
+                bluebone[j].render();
+            }
         }
     }
     else if(level==1){//回合1
         if(stime-starttime>=10.0){//回合结束
             Idx=0;
             if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
             gamemode=0;
         }
         else{
