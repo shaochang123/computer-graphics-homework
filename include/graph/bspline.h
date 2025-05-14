@@ -39,64 +39,41 @@ double bsplineBasisFunction(int i, int k, double t, const std::vector<double>& k
     return d1 + d2;
 }
 
-// 创建均匀B样条的节点向量
+// 创建标准均匀B样条节点向量（无clamp）
 std::vector<double> createUniformKnots(int n, int k) {
-    // n: 控制点数量-1, k: B样条阶数
-    int m = n + k + 1; // 节点向量大小
+    // n: 控制点数量-1, k: 阶数
+    int m = n + k + 1; // 节点数
     std::vector<double> knots(m);
-    
-    for (int i = 0; i < m; i++) {
-        if (i < k) {
-            knots[i] = 0.0; // 开始的k个节点为0
-        } else if (i <= n) {
-            knots[i] = static_cast<double>(i - k + 1) / (n - k + 2); // 中间节点均匀分布
-        } else {
-            knots[i] = 1.0; // 最后的k个节点为1
-        }
+    for (int i = 0; i < m; ++i) {
+        knots[i] = static_cast<double>(i) / (m - 1);
     }
-    
     return knots;
 }
 
 // 绘制B样条曲线
 void drawBSplineCurve(const std::vector<Point>& controlPoints, int bswidth, Color bscolor, int order = 4) {
-    if (controlPoints.size() < order) return; // 确保控制点足够
-    
-    int n = controlPoints.size() - 1; // 控制点数量减1
-    
-    // 创建节点向量
+    if (controlPoints.size() < order) return;
+    int n = controlPoints.size() - 1;
     std::vector<double> knots = createUniformKnots(n, order);
-    
-    // t的步长，步长越小曲线越平滑
+
     const double step = 0.001;
-    
-    // 从第一个有效参数开始
     double tStart = knots[order-1];
-    double tEnd = knots[n+1]; // 最后一个有效节点
-    
+    double tEnd = knots[n+1]; // 不包括最后一个节点
+
     Point prevPoint;
     bool firstPoint = true;
-    
-    // 对参数t进行均匀采样
-    for (double t = tStart; t <= tEnd; t += step) {
+    for (double t = tStart; t < tEnd; t += step) { // 注意这里是 t < tEnd
         double x = 0.0, y = 0.0;
-        
-        // 计算曲线上的点
         for (int i = 0; i <= n; i++) {
             double basis = bsplineBasisFunction(i, order, t, knots);
             x += basis * controlPoints[i].x;
             y += basis * controlPoints[i].y;
         }
-        
-        // 绘制点
         Point currentPoint = {static_cast<int>(std::round(x)), static_cast<int>(std::round(y))};
         setpixel(currentPoint.x, currentPoint.y, bswidth, bscolor);
-        
-        // 连接相邻点获得更平滑的曲线
         if (!firstPoint) {
             drawLineBresenham(prevPoint, currentPoint, false, bswidth, bscolor);
         }
-        
         prevPoint = currentPoint;
         firstPoint = false;
     }
@@ -105,13 +82,13 @@ void drawBSplineCurve(const std::vector<Point>& controlPoints, int bswidth, Colo
 // 实时绘制B样条曲线（鼠标移动时预览）
 void drawBSpline(GLFWwindow *window) {
     detectposition(window, xpos, ypos);
-    if (curpoints.size() >= bsplineOrder) {
+    if (curpoints.size() > bsplineOrder) {
         curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
         drawBSplineCurve(curpoints, curwidth, curcolor, bsplineOrder);
         curpoints.pop_back(); // 删除最后一个点
     }
     
-    // 绘制控制多边形
+    // 绘制控制多直线
     if (curpoints.size() >= 2) {
         for (int j = 0; j < curpoints.size() - 1; j++) {
             drawLineBresenham(curpoints[j], curpoints[j+1], false, 1, {1.0f, 0.0f, 0.0f});
@@ -135,7 +112,7 @@ void BSpline_Mouse_Pressed(GLFWwindow* window, int button, int action) {
     
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS && mode == 10) {
         // B样条曲线至少需要阶数个控制点
-        if (curpoints.size() < bsplineOrder) {
+        if (curpoints.size() <= bsplineOrder) {
             std::cout << "Need at least " << bsplineOrder << " points for order-" << bsplineOrder << " B-spline." << std::endl;
             return;
         }
@@ -151,10 +128,7 @@ void BSpline_Mouse_Pressed(GLFWwindow* window, int button, int action) {
         getcenposition(graphics.back());
         curpoints.clear();
     }
-    
-
 }
-
 // 处理B样条曲线在编辑模式下的鼠标操作
 void BSpline_Edit_Mouse_Handler(GLFWwindow* window, int button, int action, int mods) {
     // 确保在编辑模式且选中了B样条曲线
