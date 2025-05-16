@@ -33,6 +33,7 @@ public:
     void renderhp(int hp);
     void renderImage(const std::string& imagePath, int x, int y, int targetWidth = 0, int targetHeight = 0);
     void move(GLFWwindow* window, int key, int scancode, int action, int mods);
+    void renderenemyhp(int hp);
 };
 void Menu::renderhp(int hp){//渲染生命值
     for(int i=50;i<50+hp;i++){
@@ -40,6 +41,14 @@ void Menu::renderhp(int hp){//渲染生命值
     }
     for(int i=50+hp;i<150;i++){
         drawLineBresenham({i,77},{i,90},false,1,{1.0,0.0,0.0});
+    }
+}
+void Menu::renderenemyhp(int hp){//渲染菜单
+    for(int i=350;i<350+hp;i++){
+        drawLineBresenham({i,305},{i,318},false,1,{0.0,1.0,0.0});
+    }
+    for(int i=350+hp;i<450;i++){
+        drawLineBresenham({i,305},{i,318},false,1,{1.0,0.0,0.0});
     }
 }
 void Menu::renderbar(){//渲染菜单

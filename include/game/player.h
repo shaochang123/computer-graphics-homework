@@ -45,7 +45,7 @@ void player::renderPlayer(){
     setpixel(x-2,y+2,1,color);setpixel(x+2,y+2,1,color);setpixel(x,y-4,1,color);
 }
 void player::drophp(){
-    hp--;
+    hp-=2;
     playaudio.playSound("resource/hit.wav"); // 播放音效
 }
 void player::move(GLFWwindow* window){

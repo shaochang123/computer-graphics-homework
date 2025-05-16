@@ -8,13 +8,23 @@
 #include<graph/Crop.h>
 #include<graph/FullCircle.h>
 #include<transform/translation.h>
+
  // 路径要根据您的图标位置调整
 int level;//现在是第几轮
-int total=10;//总共多少轮
+int enemyhp=100;//敌人生命值
 int Idx=0;//选择菜单时的指向
 int gamemode=0;//游戏模式，0为菜单，1为游戏
 double stime;//游戏时长
 double starttime;//回合开始的时间
 int LMenu = 50,RMenu=450,DMenu=100,UMenu=250;//菜单位置
 int food = 5;//食物数量
+void flushwindow() {
+    // 刷新屏幕
+    for(int i=0; i<maxn; i++) {
+        for(int j=0; j<maxn; j++) {
+            g[i][j] = {0.0, 0.0, 0.0};
+        }
+    }
+}
+
 #endif

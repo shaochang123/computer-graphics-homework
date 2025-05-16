@@ -13,6 +13,7 @@
 #include<ctime>
 #include<thread>
 #include<atomic>
+#include<algorithm>
 void initRandom() {
     srand(static_cast<unsigned>(time(nullptr)));
 }

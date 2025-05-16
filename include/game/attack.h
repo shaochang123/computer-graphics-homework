@@ -119,6 +119,11 @@ class normalbone{
             
             drawarc(center, r, startRad, endRad, g.width, g.color);
         }
+        if(g.mode==2){
+            double r=sqrt((tempG.points[1].x-tempG.points[0].x)*(tempG.points[1].x-tempG.points[0].x)+(tempG.points[1].y-tempG.points[0].y)*(tempG.points[1].y-tempG.points[0].y));//半径
+            
+            drawarc(tempG.points[0], r, 0, 2*M_PI,tempG.width,tempG.color);//起始角度和终止角度都为0和2π，表示画一个完整的圆
+        }
     }
     bool detectPlayer(float x,float y){
         // 获取变换后的实际位置

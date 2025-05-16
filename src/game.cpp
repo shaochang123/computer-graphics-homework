@@ -20,8 +20,8 @@ int main(){
         stime = glfwGetTime();
         flushwindow(); 
         if(you.hp<=0){isgameover(window,false);}//游戏失败
-        if(total==0){isgameover(window,true);}//游戏胜利
-        if(gamemode==1){processepoch(level);you.move(window);you.iscollided();}//移动操作
+        if(enemyhp<=0){isgameover(window,true);}//游戏胜利
+        if(gamemode==1){processepoch(level,window,render);you.move(window);you.iscollided();}//移动操作
         render(window);                                         // 最后显示到屏幕
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -30,14 +30,6 @@ int main(){
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
-}
-void flushwindow() {
-    // 刷新屏幕
-    for(int i=0; i<maxn; i++) {
-        for(int j=0; j<maxn; j++) {
-            g[i][j] = {0.0, 0.0, 0.0};
-        }
-    }
 }
 // 在按键回调中添加音效
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -50,14 +42,34 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
            if(key == GLFW_KEY_Z){
                 
                 if(Idx==0){//进入回合
-                    audio.playSound("resource/item.wav"); // 播放音效
+                    audio.playSound("resource/snd_damage_c.wav"); // 播放音效
                     gamemode = 1;
-                    int newlevel = rand()%3;
-                    while(newlevel==level)newlevel = rand()%3;
+                    int newlevel =rand()%4;
+                    while(newlevel==level)newlevel = rand()%4;
                     level = newlevel;
+                    double curtime  = stime;
+                    double curenemyhp=enemyhp;
+                    while(glfwGetTime()-curtime<=0.5){
+                        
+                        stime = glfwGetTime();
+                        flushwindow();
+                        enemyhp = curenemyhp - (stime-curtime)*13;
+                        menu.renderenemyhp(enemyhp);
+                        render(window);
+                        glfwSwapBuffers(window);
+                        glfwPollEvents();
+                    }
+                    curtime = glfwGetTime();
+                    while(glfwGetTime()-curtime<=0.5){
+                        stime = glfwGetTime();
+                        flushwindow();
+                        menu.renderenemyhp(enemyhp);
+                        render(window);
+                        glfwSwapBuffers(window);
+                        glfwPollEvents();
+                    }
+                    selectepoch(level,window,render);
                     
-                    selectepoch(level);
-                    total--;
                 }
                 if(Idx==1){//吃药，不增回合
                     
@@ -67,14 +79,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                     gamemode=1;
                     you.hp+=40;
                     if(you.hp>=100)you.hp=100;
-                    int newlevel = rand()%3;
-                    while(newlevel==level)newlevel = rand()%3;
+                    int newlevel = rand()%4;
+                    while(newlevel==level)newlevel = rand()%4;
                     level = newlevel;
-                    selectepoch(level);
+                    selectepoch(level,window,render);
                 }
                 if(Idx==2){//饶恕
                     level = -1;
-                    selectepoch(level);
+                    selectepoch(level,window,render);
                     gamemode=1;
                 }
             }
@@ -137,10 +149,14 @@ void inline isgameover(GLFWwindow* window, bool arg) {//判断游戏结束或者
             level = 0;
             gamemode = 0;
             Idx = 0;
+            LMenu = 50;
+            RMenu=450;
+            DMenu=100;
+            UMenu=250;
             bone.clear();
             bluebone.clear();
             orangebone.clear();
-            total = 10; // 胜利后重置总回合数
+            enemyhp = 100; // 胜利后重置总回合数
             food = 5; // 重置食物数量
             stime = glfwGetTime();
             audio.playBackgroundMusic("resource/bgm.mp3", true);
