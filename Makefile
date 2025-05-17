@@ -8,7 +8,7 @@ SHELL = cmd.exe
 CXX = g++
 
 # define any compile-time flags
-CXXFLAGS	:= -std=c++17 -Wall -Wextra -g
+CXXFLAGS	:= -std=c++17 -Wall -Wextra -g -DGLFW_INCLUDE_NONE
 
 # define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify
@@ -46,7 +46,7 @@ MD	:= mkdir -p
 endif
 
 # define any directories containing header files other than /usr/include
-INCLUDES := -Iinclude -Iinclude/imgui -Iinclude/imgui/backends
+INCLUDES := -Iinclude -Iinclude/imgui -Iinclude/imgui/backends -Iinclude/glm
 
 # define the C libs
 LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%)) -lopengl32
@@ -59,7 +59,7 @@ SOURCES := $(wildcard $(SRC)/*.cpp) \
            include/imgui/imgui_tables.cpp \
            include/imgui/imgui_widgets.cpp \
 		   include/imgui/imgui_impl_glfw.cpp \
-		   include/imgui/imgui_impl_opengl3.cpp
+		   include/imgui/imgui_impl_opengl3.cpp \
 
 # define the C object files
 OBJECTS		:= $(SOURCES:.cpp=.o)

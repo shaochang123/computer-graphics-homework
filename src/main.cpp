@@ -1,229 +1,532 @@
-#include<graph/Line.h>
-#include<graph/Circle.h>
-#include<graph/Fill.h>
-#include<graph/Polygon.h>
-#include<graph/Crop.h>
-#include<graph/FullCircle.h>
-#include<transform/translation.h>
-#include<graph/bezier.h>
-#include<graph/bspline.h>
-// 鼠标点击回调函数
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
-        // 如果ImGui正在处理鼠标输入，不执行绘图操作
-        return;
+#include <glad/glad.h>
+#define GLFW_INCLUDE_NONE  // 添加这一行，阻止GLFW包含gl.h
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+// 着色器代码
+const char* vertexShaderSource = R"(
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    layout (location = 1) in vec3 aColor;
+    
+    out vec3 ourColor;
+    
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+    
+    void main() {
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
+        ourColor = aColor;
     }
-    HandleDragTranslation(window, button, action, mods);
-    Line_Mouse_Pressed(window, button, action);
-    Circle_Mouse_Pressed(window, button, action);
-    Full_Circle_Mouse_Pressed(window, button, action);
-    Fill_Mouse_Pressed(window, button, action);
-    Polygon_Mouse_Pressed(window, button, action);
-    SelectGraphByClick(window, button, action);
-    Bezier_Mouse_Pressed(window, button, action);
-    Bezier_Edit_Mouse_Handler(window,button,action,mods);
-    newcenter(window,button,action,mods);
-    crop_mouse_pressed(window,button,action,mods);
-    BSpline_Mouse_Pressed(window,button,action);
-    BSpline_Edit_Mouse_Handler(window,button,action,mods);
+)";
+
+const char* fragmentShaderSource = R"(
+    #version 330 core
+    in vec3 ourColor;
+    out vec4 FragColor;
+    
+    void main() {
+        FragColor = vec4(ourColor, 1.0);
+    }
+)";
+
+const char* planeVertexShaderSource = R"(
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+    
+    void main() {
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
+    }
+)";
+
+const char* planeFragmentShaderSource = R"(
+    #version 330 core
+    out vec4 FragColor;
+    
+    uniform vec3 planeColor;
+    
+    void main() {
+        FragColor = vec4(planeColor, 0.5); // 半透明
+    }
+)";
+
+const char* projectionVertexShaderSource = R"(
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+    uniform mat4 projectionMatrix; // 投影矩阵
+    
+    void main() {
+        // 计算投影后的位置
+        vec4 projectedPos = projectionMatrix * vec4(aPos, 1.0);
+        projectedPos /= projectedPos.w;
+        
+        gl_Position = projection * view * model * vec4(projectedPos.xyz, 1.0);
+    }
+)";
+
+const char* projectionFragmentShaderSource = R"(
+    #version 330 core
+    out vec4 FragColor;
+    
+    void main() {
+        FragColor = vec4(0.7, 0.0, 0.7, 1.0); // 紫色投影
+    }
+)";
+
+// 窗口尺寸
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+// 相机参数
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 5.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+// 鼠标控制参数
+float yaw = -90.0f;
+float pitch = 0.0f;
+float lastX = SCR_WIDTH / 2.0;
+float lastY = SCR_HEIGHT / 2.0;
+bool firstMouse = true;
+
+// 投影平面参数
+glm::vec3 planePosition = glm::vec3(0.0f, -2.0f, 0.0f);
+glm::vec3 planeNormal = glm::vec3(0.0f, 1.0f, 0.0f);
+float planeSize = 4.0f;
+
+// 投影光源位置（用于计算3D物体的投影）
+glm::vec3 lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
+
+// 处理输入
+void processInput(GLFWwindow* window, float deltaTime) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+    
+    // 相机移动
+    float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    
+    // 投影平面移动
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        planePosition.y += cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        planePosition.y -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        planePosition.x -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        planePosition.x += cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+        planePosition.z -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+        planePosition.z += cameraSpeed;
+    
+    // 调整投影光源位置
+    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
+        lightPos.y += cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+        lightPos.y -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)
+        lightPos.x -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+        lightPos.x += cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
+        lightPos.z -= cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
+        lightPos.z += cameraSpeed;
 }
-// 键盘回调函数
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    ChangeSelectedGraph(key,action);
-    backup(key,mods,action);
-    frontup(key,mods,action);
-    saveImage(key,mods,action);
-    Translation(window);
+
+// 鼠标回调函数
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+    
+    float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+    
+    yaw += xoffset;
+    pitch += yoffset;
+    
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+    
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(direction);
 }
-void flushwindow();
+
+// 创建着色器程序
+unsigned int createShaderProgram(const char* vertexShader, const char* fragmentShader) {
+    // 编译顶点着色器
+    unsigned int vertex, fragment;
+    int success;
+    char infoLog[512];
+    
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vertexShader, NULL);
+    glCompileShader(vertex);
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        std::cout << "错误::顶点着色器编译失败\n" << infoLog << std::endl;
+    }
+    
+    // 编译片段着色器
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fragmentShader, NULL);
+    glCompileShader(fragment);
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        std::cout << "错误::片段着色器编译失败\n" << infoLog << std::endl;
+    }
+    
+    // 链接着色器
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertex);
+    glAttachShader(shaderProgram, fragment);
+    glLinkProgram(shaderProgram);
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "错误::着色器程序链接失败\n" << infoLog << std::endl;
+    }
+    
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    
+    return shaderProgram;
+}
+
+// 计算投影矩阵
+glm::mat4 calculateShadowMatrix(glm::vec3 lightPos, glm::vec3 planePos, glm::vec3 planeNormal) {
+    planeNormal = glm::normalize(planeNormal);
+    float d = glm::dot(planeNormal, planePos);
+    
+    float dot = glm::dot(planeNormal, lightPos) - d;
+    
+    // 构建阴影矩阵
+    glm::mat4 shadowMat;
+    shadowMat[0][0] = dot - planeNormal.x * lightPos.x;
+    shadowMat[0][1] = -planeNormal.x * lightPos.y;
+    shadowMat[0][2] = -planeNormal.x * lightPos.z;
+    shadowMat[0][3] = -planeNormal.x;
+    
+    shadowMat[1][0] = -planeNormal.y * lightPos.x;
+    shadowMat[1][1] = dot - planeNormal.y * lightPos.y;
+    shadowMat[1][2] = -planeNormal.y * lightPos.z;
+    shadowMat[1][3] = -planeNormal.y;
+    
+    shadowMat[2][0] = -planeNormal.z * lightPos.x;
+    shadowMat[2][1] = -planeNormal.z * lightPos.y;
+    shadowMat[2][2] = dot - planeNormal.z * lightPos.z;
+    shadowMat[2][3] = -planeNormal.z;
+    
+    shadowMat[3][0] = -d * lightPos.x;
+    shadowMat[3][1] = -d * lightPos.y;
+    shadowMat[3][2] = -d * lightPos.z;
+    shadowMat[3][3] = dot - d;
+    
+    return shadowMat;
+}
+
 int main() {
-    const int width = 800, height = 800;//设置窗口大小
+    // 初始化GLFW
+    if (!glfwInit()) {
+        std::cout << "GLFW初始化失败" << std::endl;
+        return -1;
+    }
+    
+    // 设置OpenGL版本
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
     // 创建窗口
-    GLFWwindow* window = init(width, height);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "3D投影演示", NULL, NULL);
     if (!window) {
+        std::cout << "窗口创建失败" << std::endl;
         glfwTerminate();
         return -1;
     }
-    // 初始化ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    // 设置ImGui风格
-    ImGui::StyleColorsDark();
-
-    // 初始化平台/渲染器后端
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
-
-    // 再注册其他回调
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    // 注册鼠标滚轮回调函数，用来旋转图形
-    glfwSetScrollCallback(window, scroll_callback);
-    // 注册键盘回调函数
-    glfwSetKeyCallback(window, key_callback);
-    while (!glfwWindowShouldClose(window)) {
-        
-        glfwPollEvents();
-        flushwindow();//刷新屏幕
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame(); 
-        ui();
-        cursor_position(window);
-        glClear(GL_COLOR_BUFFER_BIT); // 清空颜色缓冲区
-        if(mode==-1&&ChooseIdx!=-1){
-            // 应用变换到旋转中心点
-            Point centerPoint = {static_cast<int>(graphics[ChooseIdx].cenx), 
-                    static_cast<int>(graphics[ChooseIdx].ceny)};
-            Point transformedCenter;
-            if(graphics[ChooseIdx].isdefault){
-                transformedCenter= applyTransform(centerPoint, graphics[ChooseIdx].transform);
-            }
-            else transformedCenter = centerPoint;
-            // 绘制变换后的旋转中心
-            setpixel(transformedCenter.x, transformedCenter.y, 2, {1.0, 0.0, 0.0});
-        }
-        if(mode == 0 || mode==7) drawLine(window);//渲染直线
-        else if(mode==1) drawArc(window);//渲染圆弧
-        else if(mode==2) drawFullArc(window);//渲染整圆
-        else if(mode==4) drawPolygon(window);//渲染填充
-        else if(mode==5||mode==8||mode==9)drawrec(window);
-        else if(mode==6) drawBezier(window);//渲染贝塞尔曲线
-        else if(mode==10)drawBSpline(window);//渲染B样条曲线
-        else render();
-        if(mode!=-1)ChooseIdx = -1;
-        if(mode==-1&&ChooseIdx!=-1&&(graphics[ChooseIdx].mode==6||graphics[ChooseIdx].mode==10)&&selectedPointIndex!=-1){
-            // 1. 获取鼠标位置
-                detectposition(window, xpos, ypos);
-                Point mousePos = {static_cast<int>(xpos), static_cast<int>(ypos)};
-
-                // 2. 计算当前图形的逆变换矩阵
-                Matrix3x3 invTransform = inverse(graphics[ChooseIdx].transform);
-
-                // 3. 把鼠标坐标逆变换到原始坐标系
-                Point newCtrlPoint = applyTransform(mousePos, invTransform);
-
-                // 4. 更新控制点
-                graphics[ChooseIdx].points[selectedPointIndex] = newCtrlPoint;
-                if(graphics[ChooseIdx].isdefault==true)getcenposition(graphics[ChooseIdx]);
-        }
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glfwMakeContextCurrent(window);
     
+    // 设置视口大小随窗口变化
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+        glViewport(0, 0, width, height);
+    });
+    
+    // 设置鼠标回调
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
+    // 初始化GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "GLAD初始化失败" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 启用深度测试
+    glEnable(GL_DEPTH_TEST);
+    // 启用混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // 创建着色器程序
+    unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    unsigned int planeShaderProgram = createShaderProgram(planeVertexShaderSource, planeFragmentShaderSource);
+    unsigned int projectionShaderProgram = createShaderProgram(projectionVertexShaderSource, projectionFragmentShaderSource);
+    
+    // 创建立方体顶点数据
+    float cubeVertices[] = {
+        // 位置                 // 颜色
+        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+        
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+        
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
+        
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
+        
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f
+    };
+    
+    unsigned int cubeIndices[] = {
+        0, 1, 2, 2, 3, 0,       // 前面
+        4, 5, 6, 6, 7, 4,       // 后面
+        8, 9, 10, 10, 11, 8,    // 左面
+        12, 13, 14, 14, 15, 12, // 右面
+        16, 17, 18, 18, 19, 16, // 底面
+        20, 21, 22, 22, 23, 20  // 顶面
+    };
+    
+    // 创建投影平面顶点数据
+    float planeVertices[] = {
+        -planeSize/2, 0.0f, -planeSize/2,
+         planeSize/2, 0.0f, -planeSize/2,
+         planeSize/2, 0.0f,  planeSize/2,
+        -planeSize/2, 0.0f,  planeSize/2
+    };
+    
+    unsigned int planeIndices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+    
+    // 创建立方体VAO
+    unsigned int cubeVAO, cubeVBO, cubeEBO;
+    glGenVertexArrays(1, &cubeVAO);
+    glGenBuffers(1, &cubeVBO);
+    glGenBuffers(1, &cubeEBO);
+    
+    glBindVertexArray(cubeVAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIndices), cubeIndices, GL_STATIC_DRAW);
+    
+    // 位置属性
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // 颜色属性
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    // 创建平面VAO
+    unsigned int planeVAO, planeVBO, planeEBO;
+    glGenVertexArrays(1, &planeVAO);
+    glGenBuffers(1, &planeVBO);
+    glGenBuffers(1, &planeEBO);
+    
+    glBindVertexArray(planeVAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(planeIndices), planeIndices, GL_STATIC_DRAW);
+    
+    // 位置属性
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // 解绑
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    
+    // 渲染循环
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+    
+    while (!glfwWindowShouldClose(window)) {
+        // 计算帧时间
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        
+        // 处理输入
+        processInput(window, deltaTime);
+        
+        // 清除颜色缓冲和深度缓冲
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        // 设置相机视图矩阵
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        
+        // 设置投影矩阵
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        
+        // 立方体位置
+        glm::vec3 cubePos = glm::vec3(0.0f, 0.0f, 0.0f);
+        
+        // 渲染立方体
+        glUseProgram(shaderProgram);
+        
+        // 更新着色器变量
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, cubePos);
+        model = glm::rotate(model, glm::radians(currentFrame * 50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+        
+        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+        unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        
+        glBindVertexArray(cubeVAO);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        
+        // 计算阴影投影矩阵
+        glm::mat4 shadowMatrix = calculateShadowMatrix(lightPos, planePosition, planeNormal);
+        
+        // 渲染立方体投影
+        glUseProgram(projectionShaderProgram);
+        
+        modelLoc = glGetUniformLocation(projectionShaderProgram, "model");
+        viewLoc = glGetUniformLocation(projectionShaderProgram, "view");
+        projectionLoc = glGetUniformLocation(projectionShaderProgram, "projection");
+        unsigned int shadowMatrixLoc = glGetUniformLocation(projectionShaderProgram, "projectionMatrix");
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(shadowMatrixLoc, 1, GL_FALSE, glm::value_ptr(shadowMatrix));
+        
+        glBindVertexArray(cubeVAO);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        
+        // 渲染投影平面
+        glUseProgram(planeShaderProgram);
+        
+        model = glm::mat4(1.0f);
+        // 应用旋转让平面始终垂直于法线方向
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec3 axis = glm::cross(up, planeNormal);
+        float angle = glm::acos(glm::dot(up, planeNormal));
+        
+        model = glm::translate(model, planePosition);
+        if (glm::length(axis) > 0.01f)  // 避免零向量
+            model = glm::rotate(model, angle, glm::normalize(axis));
+        
+        modelLoc = glGetUniformLocation(planeShaderProgram, "model");
+        viewLoc = glGetUniformLocation(planeShaderProgram, "view");
+        projectionLoc = glGetUniformLocation(planeShaderProgram, "projection");
+        unsigned int planeColorLoc = glGetUniformLocation(planeShaderProgram, "planeColor");
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(planeColorLoc, 0.5f, 0.8f, 0.8f);  // 设置平面颜色
+        
+        glBindVertexArray(planeVAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        
+        // 绘制光源位置标记点
+        glUseProgram(shaderProgram);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, lightPos);
+        model = glm::scale(model, glm::vec3(0.2f));
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glBindVertexArray(cubeVAO);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        
+        // 交换缓冲并检查事件
         glfwSwapBuffers(window);
-        
+        glfwPollEvents();
     }
-    // 清理ImGui
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-    glfwTerminate();std::cout<<"bye\n"<<std::endl;//bye
+    
+    // 清理资源
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteVertexArrays(1, &planeVAO);
+    glDeleteBuffers(1, &cubeVBO);
+    glDeleteBuffers(1, &cubeEBO);
+    glDeleteBuffers(1, &planeVBO);
+    glDeleteBuffers(1, &planeEBO);
+    glDeleteProgram(shaderProgram);
+    glDeleteProgram(planeShaderProgram);
+    glDeleteProgram(projectionShaderProgram);
+    
+    glfwTerminate();
     return 0;
-}
-
-
-void flushwindow() {
-    // 刷新屏幕
-    for(int i=0; i<maxn; i++) {
-        for(int j=0; j<maxn; j++) {
-            g[i][j] = {1.0, 1.0, 1.0};
-        }
-    }
-    for(int i=0; i<graphics.size(); i++) {
-        Color choosecolor;
-        if(i==ChooseIdx) {
-            choosecolor = graphics[i].color;
-            graphics[i].color = selectedColor;
-        }
-        
-        // 获取当前变换矩阵
-        Matrix3x3 transform = graphics[i].transform;
-        
-        if(graphics[i].mode == 0) { // 直线
-            // 应用变换到端点
-            Point p1 = applyTransform(graphics[i].points[0], transform);
-            Point p2 = applyTransform(graphics[i].points[1], transform);
-            
-            drawLineBresenham(p1, p2, false, graphics[i].width, graphics[i].color,graphics[i].a,graphics[i].b);
-        }
-        else if(graphics[i].mode == 7) { // 中点直线
-            // 应用变换到端点
-            Point p1 = applyTransform(graphics[i].points[0], transform);
-            Point p2 = applyTransform(graphics[i].points[1], transform);
-            middleLine(p1, p2, graphics[i].width, graphics[i].color,graphics[i].a,graphics[i].b);
-        }
-        else if(graphics[i].mode == 2) { // 整圆
-            Point center = applyTransform(graphics[i].points[0], transform); 
-            Point edge = applyTransform(graphics[i].points[1], transform);
-            
-            // 计算变换后的半径
-            float radius = sqrt(pow(edge.x - center.x, 2) + pow(edge.y - center.y, 2));
-            
-            drawarc(center, radius, 0, 2 * M_PI, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 1) { // 圆弧
-            Point center = applyTransform(graphics[i].points[0], transform);
-            Point start = applyTransform(graphics[i].points[1], transform);
-            Point end = applyTransform(graphics[i].points[2], transform);
-            
-            double r = sqrt((start.x - center.x) * (start.x - center.x) + 
-                         (start.y - center.y) * (start.y - center.y));
-                      
-            double startRad = atan2(-center.y + start.y, start.x - center.x);
-            double endRad = atan2(-center.y + end.y, end.x - center.x);
-            
-            if (startRad < 0) startRad += 2 * M_PI;
-            if (endRad < 0) endRad += 2 * M_PI;
-            
-            drawarc(center, r, startRad, endRad, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 3) { // 填充区域
-            // 应用变换到所有填充点
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            
-            for (const auto& point : transformedPoints) {
-                setpixel(point.x, point.y, graphics[i].width, graphics[i].color);
-            }
-        }
-        else if(graphics[i].mode == 4) { // 多边形
-            // 应用变换到所有多边形顶点
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            
-            fillPolygon(transformedPoints, graphics[i].width, graphics[i].color);
-        }
-        else if(graphics[i].mode == 6) { // Bezier曲线
-           
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            for(int j=0;j<transformedPoints.size()-1;j++){
-                if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
-            }
-            drawBezierCurve(transformedPoints,graphics[i].width,graphics[i].color);
-        }
-        else if(graphics[i].mode==10){
-            // 使用reserved字段存储的阶数，如果没有则默认为4
-            std::vector<Point> transformedPoints;
-            for (const auto& point : graphics[i].points) {
-                transformedPoints.push_back(applyTransform(point, transform));
-            }
-            for(int j=0;j<transformedPoints.size()-1;j++){
-                if(graphics[i].key==0||graphics[i].key==1)drawLineBresenham(transformedPoints[j], transformedPoints[j+1], false, 1,{1.0f,0.0f,0.0f});
-            }
-            int order = graphics[i].reserved > 0 ? graphics[i].reserved : 4;
-            drawBSplineCurve(transformedPoints, graphics[i].width, graphics[i].color, order);
-        }
-        if(i == ChooseIdx) {
-            graphics[i].color = choosecolor;
-        }
-    }
 }
