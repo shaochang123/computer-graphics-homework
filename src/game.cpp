@@ -44,8 +44,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 if(Idx==0){//进入回合
                     audio.playSound("resource/snd_damage_c.wav"); // 播放音效
                     gamemode = 1;
-                    int newlevel =rand()%4;
-                    while(newlevel==level)newlevel = rand()%4;
+                    int newlevel =rand()%5;
+                    while(newlevel==level)newlevel = rand()%5;
                     level = newlevel;
                     double curtime  = stime;
                     double curenemyhp=enemyhp;
@@ -79,8 +79,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                     gamemode=1;
                     you.hp+=40;
                     if(you.hp>=100)you.hp=100;
-                    int newlevel = rand()%4;
-                    while(newlevel==level)newlevel = rand()%4;
+                    int newlevel = rand()%5;
+                    while(newlevel==level)newlevel = rand()%5;
                     level = newlevel;
                     selectepoch(level,window,render);
                 }

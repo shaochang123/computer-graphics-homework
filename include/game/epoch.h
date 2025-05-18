@@ -85,6 +85,19 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
             bluebone.push_back(b);
         }
     }
+    else if(level==4){
+        you.switchstat('b');
+        for(int i=0;i<50;i++){//召唤骨头
+            graphic g = {{{50-i*200, 100},{50-i*200,250}}, 0, {1.0f,1.0f,1.0f},3};// 在左边创建一个骨头
+            normalbone b(g,40);
+            bone.push_back(b);
+        }
+        for(int i=0;i<50;i++){//召唤骨头
+            graphic g = {{{-50-i*200, 100},{-50-i*200,110}}, 0, {1.0f,1.0f,1.0f},2};// 在左边创建一个骨头
+            normalbone b(g,40);
+            bone.push_back(b);
+        }
+    }
     else if(level==-1){//饶恕
         you.switchstat('r');
     }
@@ -179,6 +192,28 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             for(int j=0;j<bone.size();j++){
                 bone[j].g.transform = Matrix3x3(); // 重置变换矩阵
                 bone[j].rotate(stime-bone[j].st,190);
+                bone[j].render();
+            }
+        }
+    }
+    else if(level==4){
+        if(stime-starttime>=20.0){//回合结束
+            Idx=0;
+            if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
+            gamemode=0;
+        }
+        else{
+            for(int j=0;j<50;j++){
+                bone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+                bone[j].move(stime-bone[j].st,150);
+                bone[j].scale(0.15*cos(2.5*(stime-bone[j].st))+0.85);
+                bone[j].render();
+            }
+            for(int j=50;j<bone.size();j++){
+                bone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+                bone[j].move(stime-bone[j].st,150);
                 bone[j].render();
             }
         }
