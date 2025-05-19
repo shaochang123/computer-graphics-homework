@@ -36,14 +36,16 @@ public:
     void renderenemyhp(int hp);
 };
 void Menu::renderhp(int hp){//渲染生命值
+    Color color = {1.0, 1.0, 0.0}; // 黄色
+    if(you.Debug)color = {0.0, 0.0, 1.0}; // 蓝色
     for(int i=50;i<50+hp;i++){
-        drawLineBresenham({i,77},{i,90},false,1,{1.0,1.0,0.0});
+        drawLineBresenham({i,77},{i,90},false,1,color);
     }
     for(int i=50+hp;i<150;i++){
         drawLineBresenham({i,77},{i,90},false,1,{1.0,0.0,0.0});
     }
 }
-void Menu::renderenemyhp(int hp){//渲染菜单
+void Menu::renderenemyhp(int hp){//渲染敌人生命值
     for(int i=350;i<350+hp;i++){
         drawLineBresenham({i,305},{i,318},false,1,{0.0,1.0,0.0});
     }

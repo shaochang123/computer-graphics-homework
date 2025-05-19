@@ -37,6 +37,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if(key == GLFW_KEY_ESCAPE) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
+        if(key ==GLFW_KEY_D){
+            audio.playSound("resource/switch.wav"); // 播放音效
+            if(you.Debug){
+                you.Debug = false;
+            }
+            else{
+                you.Debug = true;
+            }
+        }
         if(gamemode==0){
            menu.move(window,key,scancode,action,mods);
            if(key == GLFW_KEY_Z){

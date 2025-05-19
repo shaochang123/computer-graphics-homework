@@ -14,6 +14,7 @@ class player{
     public:
     float speed;
     char stat;//status为状态
+    bool Debug = false;
     float x,y,hp,oldx,oldy;
     bool CanJump = true;//是否可以跳跃
     float vy = 0.0f;         // 垂直速度
@@ -25,7 +26,7 @@ class player{
     float maxFloatTime = 0.3f;  // 最大滞空时间（秒）
     bool isFloating = false;    // 是否正在滞空
     
-    player(int hp=100,int x=maxn/2,int y=maxn/2 -100,float speed=2.0,char status='r'):hp(hp),x(x),y(y),oldx(x),oldy(y),speed(speed),stat(status){}//构造函数
+    player(int hp=100,int x=maxn/2,int y=maxn/2 -100,float speed=2.0,char status='r',char Debug=false):hp(hp),x(x),y(y),oldx(x),oldy(y),speed(speed),stat(status),Debug(Debug){}//构造函数
     void renderPlayer();
     void switchstat(char statt);
     void move(GLFWwindow* glWindow);
@@ -36,7 +37,6 @@ class player{
 void player::renderPlayer(){
     Color color = {1.0, 0.0, 0.0}; // 红色
     if(stat=='b')color = {0.0, 0.0, 1.0}; // 蓝色
-    
     for(int i=x-4;i<=x+4;i++){setpixel(i,y,1,color);}
     for(int i=x-3;i<=x+3;i++){setpixel(i,y-1,1,color);}
     for(int i=x-2;i<=x+2;i++){setpixel(i,y-2,1,color);  }
@@ -45,7 +45,7 @@ void player::renderPlayer(){
     setpixel(x-2,y+2,1,color);setpixel(x+2,y+2,1,color);setpixel(x,y-4,1,color);
 }
 void player::drophp(){
-    hp-=2;
+    if(!Debug)hp-=2;
     playaudio.playSound("resource/hit.wav"); // 播放音效
 }
 void player::move(GLFWwindow* window){

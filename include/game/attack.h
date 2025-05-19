@@ -163,6 +163,9 @@ class normalbone{
         return false;
     }
 };
+class thunder{//类似龙骨炮的攻击
+
+};
 std::vector<normalbone>bone;//骨头攻击
 std::vector<normalbone>bluebone;
 std::vector<normalbone>orangebone;
