@@ -34,6 +34,10 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
             normalbone b(g,sp);
             bluebone.push_back(b);
         }
+        thunder t({you.x,175},'h',40,150);
+        thunderbone.push_back(t);
+        thunder t1({you.x,175},'h',40,150,stime+1);
+        thunderbone.push_back(t1);
     }
     else if(level==1){//回合1，此时玩家是蓝色模式
         you.switchstat('b');
@@ -113,11 +117,12 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
 }
 void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//处理回合
     if(level==0){//回合0
-        if(stime-starttime>=10.0){//回合结束
+        if(stime-starttime>=15.0){//回合结束
             Idx=0;
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             gamemode=0;
         }
         else{
@@ -133,6 +138,17 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
                 bluebone[j].move(stime-bluebone[j].st,200,'l');
                 bluebone[j].render();
             }
+            for(int j=0;j<thunderbone.size();j++){
+                thunderbone[j].render();
+                if(thunderbone[j].detectPlayer(you.x,you.y)){
+                    you.drophp();
+                }
+                if(stime-thunderbone[j].startTime>=4.0){
+                    thunderbone[j].center = {int(you.x),175};
+                    thunderbone[j].startTime = stime;
+                    thunderbone[j].isPlayed = false;
+                }
+            }
         }
     }
     else if(level==1){//回合1
@@ -141,6 +157,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             gamemode=0;
         }
         else{
@@ -158,6 +175,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             gamemode=0;
         }
         else{
@@ -178,6 +196,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             double curtime=stime;
             int curLmenu = LMenu;
             int curRmenu = RMenu;
@@ -211,6 +230,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             gamemode=0;
         }
         else{
@@ -228,11 +248,12 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
         }
     }
     else if(level==5){
-        if(stime-starttime>=20.0){//回合结束
+        if(stime-starttime>=17.0){//回合结束
             Idx=0;
             if(!bone.empty())bone.clear();
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
             gamemode=0;
         }
         else{
@@ -245,8 +266,10 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
                 int newy = bone[0].g.points[bone[0].g.points.size()-1].y-50.0*dy/distance;
                 // if(bone[0].g.points.size()>=3)bone[0].g.points.pop_back();
                 bone[0].g.points.push_back({newx,newy});
+                 audio.playSound("./resource/mus_st_meatfactory.ogg");
             }
             bone[0].render();
+           
         }
     }
     else if(level==-1){

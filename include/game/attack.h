@@ -167,9 +167,118 @@ class normalbone{
     }
 };
 class thunder{//类似龙骨炮的攻击
-
+    public:
+    Point center;          // 中心坐标
+    char orientation;      // 朝向: 'h'水平, 'v'垂直
+    float width;           // 矩形宽度
+    float height;          // 矩形高度
+    double startTime;      // 开始时间
+    Color warningColor;    // 警告颜色
+    Color attackColor;     // 攻击颜色
+    bool isPlayed = false; // 是否播放过音效
+    // 构造函数
+    thunder(Point center = {maxn/2, maxn/2}, char orientation = 'h', 
+            float width = 80, float height = 30, double startTime = stime)
+        : center(center), orientation(orientation), width(width), height(height),
+          startTime(startTime), warningColor{1.0f, 0.0f, 0.0f}, attackColor{1.0f, 1.0f, 1.0f} {
+        // 确保矩形不超出窗口
+       
+    }
+    // 渲染函数
+    void  render() {
+        double elapsed = stime - startTime;
+        
+        // 前1.5秒显示警告
+        if (elapsed < 1.5) {
+            drawWarning();
+        }
+        // 1.5-4秒显示攻击
+        else if (elapsed < 4.0) {
+            drawAttack(elapsed);
+            if(!isPlayed) {
+                audio.playSound("resource/mus_sfx_chainsaw.ogg"); // 播放音效
+                isPlayed = true;
+            }
+        }
+    }
+    
+    // 绘制警告边框
+    void drawWarning() {
+        int x1, y1, x2, y2;
+        
+        if (orientation == 'h') { // 水平矩形
+            x1 = center.x - width/2;
+            y1 = center.y - height/2;
+            x2 = center.x + width/2;
+            y2 = center.y + height/2;
+        } else { // 垂直矩形
+            x1 = center.x - height/2;
+            y1 = center.y - width/2;
+            x2 = center.x + height/2;
+            y2 = center.y + width/2;
+        }
+        
+        // 绘制边框
+ 
+        drawLineBresenham({x2, y1}, {x2, y2}, false, 1, warningColor);
+        
+        drawLineBresenham({x1, y2}, {x1, y1}, false, 1, warningColor);
+    }
+    
+    // 绘制攻击，具有闪烁效果
+    void drawAttack(double elapsed) {
+        double curwidth = 5*cos(30*elapsed)+width+5;
+        int x1, y1, x2, y2;
+        
+        if (orientation == 'h') { // 水平矩形
+            x1 = center.x - curwidth/2;
+            y1 = center.y - height/2;
+            x2 = center.x + curwidth/2;
+            y2 = center.y + height/2;
+        } else { // 垂直矩形
+            x1 = center.x - height/2;
+            y1 = center.y - curwidth/2;
+            x2 = center.x + height/2;
+            y2 = center.y + curwidth/2;
+        }
+        
+        // 填充矩形
+        for (int y = y1; y <= y2; y++) {
+            for (int x = x1; x <= x2; x++) {
+                if (x >= 0 && x < maxn && y >= 0 && y < maxn) {
+                    setpixel(x, y, 1, attackColor);
+                }
+            }
+        }
+    }
+    
+    // 检测玩家是否在攻击范围内
+    bool detectPlayer(float x, float y) {
+        double elapsed = stime - startTime;
+        double curwidth = 5*cos(30*elapsed)+width+5;
+        // 只有在攻击阶段才进行碰撞检测
+        if (elapsed < 1.5 || elapsed >= 4.0) return false;
+        
+        int x1, y1, x2, y2;
+        
+        if (orientation == 'h') { // 水平矩形
+            x1 = center.x - curwidth/2;
+            y1 = center.y - height/2;
+            x2 = center.x + curwidth/2;
+            y2 = center.y + height/2;
+        } else { // 垂直矩形
+            x1 = center.x - height/2;
+            y1 = center.y - curwidth/2;
+            x2 = center.x + height/2;
+            y2 = center.y + curwidth/2;
+        }
+        
+        // 检查玩家是否在矩形内
+        return (x >= x1 && x <= x2 && y >= y1 && y <= y2);
+    }
 };
 std::vector<normalbone>bone;//骨头攻击
 std::vector<normalbone>bluebone;
 std::vector<normalbone>orangebone;
+std::vector<thunder>thunderbone;
 #endif
