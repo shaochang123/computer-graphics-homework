@@ -37,7 +37,7 @@ public:
 };
 void Menu::renderhp(int hp){//渲染生命值
     Color color = {1.0, 1.0, 0.0}; // 黄色
-    if(you.Debug)color = {0.0, 0.0, 1.0}; // 蓝色
+    if(you.Debug)color = {0.0, 0.5, 1.0}; // 蓝色
     for(int i=50;i<50+hp;i++){
         drawLineBresenham({i,77},{i,90},false,1,color);
     }
