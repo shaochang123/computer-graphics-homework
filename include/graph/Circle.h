@@ -43,47 +43,4 @@ void drawarc(Point center, int r, double startRad, double endRad, int w=curwidth
         x++;
     }
 }
-// 圆弧模式下绘制像素网格
-void drawArc(GLFWwindow *window){
-    detectposition(window, xpos, ypos);
-    if(curpoints.size()==1){
-        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)},true);//最后的参数变为true，表示画虚线
-    }
-    else if(curpoints.size()==2){
-        double r=sqrt((curpoints[1].x-curpoints[0].x)*(curpoints[1].x-curpoints[0].x)+(curpoints[1].y-curpoints[0].y)*(curpoints[1].y-curpoints[0].y));//半径
-        double startRad = atan2(curpoints[0].y - curpoints[1].y, curpoints[1].x - curpoints[0].x);
-        double endRad = atan2(curpoints[0].y - ypos, xpos - curpoints[0].x);
-        if (startRad < 0) startRad += 2 * M_PI;//保证角度在0到2π之间
-        if(endRad < 0) endRad += 2*M_PI;//保证角度在0到2π之间
-        drawarc(curpoints[0], r, startRad, endRad,curwidth);
-    }
-    render();
-}
-void Circle_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 1){
-        if(curpoints.size()==0){
-            detectposition(window, xpos, ypos);
-            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-        }
-        else if(curpoints.size()==1){//确定圆弧上的一个点(固定半径)
-            detectposition(window, xpos, ypos);
-            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-        }
-        else if(curpoints.size()==2){
-            drawArc(window);
-            detectposition(window, xpos, ypos);
-            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-            graphics.push_back({curpoints,mode,curcolor,curwidth});
-           
-            curpoints.clear();
-        } 
-    }
-}
-void Circle_Keyboard_Pressed(int key, int action){
-    if(key == GLFW_KEY_C && action == GLFW_PRESS){//切换到圆弧模式
-        mode=1;
-        curpoints.clear(); // 清空当前点
-        std::cout<<"Circle Mode"<<std::endl;
-    }
-}
 #endif

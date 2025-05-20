@@ -253,49 +253,5 @@ void fillPolygon(const std::vector<Point>& vertices,int w =curwidth,Color color=
 void addPointToPolygon(std::vector<Point>& vertices, int x, int y) {
     vertices.push_back({x, y});
 }
-// 绘制多边形
-void drawPolygon(GLFWwindow *window) {
-    
-    detectposition(window, xpos, ypos);
-    if(curpoints.size()==1){
-        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)});
-    }
-    else if(curpoints.size()>=2){
-        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-        fillPolygon(curpoints);
-        curpoints.pop_back();
-    }
-    render();//必须写上，不然切换后立马黑屏
-}
-
-void Polygon_Mouse_Pressed(GLFWwindow* window, int button, int action) {
-    if (mode!=4) return;
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        detectposition(window, xpos, ypos);
-        addPointToPolygon(curpoints, static_cast<int>(xpos), static_cast<int>(ypos));
-    } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        // 右键闭合多边形
-        if (curpoints.size() >= 2) {
-            drawPolygon(window);//这里加上，和画直线一样，不然画完之后立马就没
-            detectposition(window, xpos, ypos);
-            curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-            graphics.push_back({curpoints,mode,curcolor,curwidth});
-            
-            curpoints.clear();
-        }
-        else{
-            std::cout << "Polygon must have at least 3 vertices." << std::endl;
-        }
-    }
-}
-
-// 键盘回调
-void Polygon_Keyboard_Pressed(int key,  int action) {
-    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-        mode = 4; // 设置为多边形模式
-        curpoints.clear(); // 清空当前点
-        std::cout << "Polygon Mode" << std::endl;
-    }
-}
 
 #endif

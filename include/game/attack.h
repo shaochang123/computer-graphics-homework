@@ -124,6 +124,9 @@ class normalbone{
             
             drawarc(tempG.points[0], r, 0, 2*M_PI,tempG.width,tempG.color);//起始角度和终止角度都为0和2π，表示画一个完整的圆
         }
+        if(g.mode==6){
+            drawBezierCurve(g.points, g.width, g.color);
+        }
     }
     bool detectPlayer(float x,float y){
         // 获取变换后的实际位置

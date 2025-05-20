@@ -98,6 +98,15 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
             bone.push_back(b);
         }
     }
+    else if(level==5){
+        processtime = starttime;
+        int x = rand()%maxn;
+        int y = rand()%maxn;
+        you.switchstat('r');
+        graphic g = {{{x,y}},6,{1.0f,1.0f,1.0f},2};
+        normalbone b(g,40);
+        bone.push_back(b);
+    }
     else if(level==-1){//饶恕
         you.switchstat('r');
     }
@@ -216,6 +225,28 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
                 bone[j].move(stime-bone[j].st,150);
                 bone[j].render();
             }
+        }
+    }
+    else if(level==5){
+        if(stime-starttime>=20.0){//回合结束
+            Idx=0;
+            if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
+            gamemode=0;
+        }
+        else{
+            if(stime-processtime>=1.0){
+                processtime = stime;
+                int dx = bone[0].g.points[bone[0].g.points.size()-1].x-you.x;
+                int dy = bone[0].g.points[bone[0].g.points.size()-1].y-you.y;
+                double distance = sqrt(dx*dx+dy*dy);
+                int newx = bone[0].g.points[bone[0].g.points.size()-1].x-50.0*dx/distance;
+                int newy = bone[0].g.points[bone[0].g.points.size()-1].y-50.0*dy/distance;
+                // if(bone[0].g.points.size()>=3)bone[0].g.points.pop_back();
+                bone[0].g.points.push_back({newx,newy});
+            }
+            bone[0].render();
         }
     }
     else if(level==-1){

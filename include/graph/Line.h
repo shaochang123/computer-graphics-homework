@@ -60,30 +60,4 @@ void middleLine(Point start, Point end) {
         d += 2 * dy;
     }
 }
-void drawLine(GLFWwindow *window){
-    detectposition(window, xpos, ypos);
-    if(curpoints.size() == 1){//如果已经按下鼠标（确定好了第一个点），那么就以按下的点和当前鼠标位置为直线的两个端点
-        drawLineBresenham(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)},false,curwidth,curcolor);
-         // middleLine(curpoints[0], {static_cast<int>(xpos), static_cast<int>(ypos)});//如果想用中点算法画，就把上一行注释掉，把这一行取消注释
-    }
-    render();
-}
-void Line_Mouse_Pressed(GLFWwindow* window, int button, int action){
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mode == 0){
-        detectposition(window, xpos, ypos);
-        curpoints.push_back({static_cast<int>(xpos), static_cast<int>(ypos)});
-        if(curpoints.size() == 2){
-            drawLine(window);
-            graphics.push_back({curpoints,mode,curcolor,curwidth});
-            curpoints.clear();
-        }
-    }
-}
-void Line_Keyboard_Pressed(int key, int action){
-    if(key == GLFW_KEY_L && action == GLFW_PRESS){//切换到直线模式
-        mode=0;
-        curpoints.clear(); // 清空当前点
-        std::cout<<"Line Mode"<<std::endl;
-    }
-}
 #endif
