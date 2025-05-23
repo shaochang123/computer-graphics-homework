@@ -92,7 +92,7 @@ class normalbone{
         g.transform = scaleMatrix * g.transform;
        
     }
-    void render() {//渲染这个骨头
+    void render(bool arg=false) {//渲染这个骨头,arg表示是否画虚线
         // 创建临时图形用于渲染
         graphic tempG = g;
         // 应用存储的变换到所有点
@@ -100,7 +100,7 @@ class normalbone{
             point = applyTransform(point, g.transform);
         }
         // 渲染图形（这里假设有一个drawLine函数）
-        if(g.mode==0)drawLineBresenham(tempG.points[0], tempG.points[1], false, 
+        if(g.mode==0)drawLineBresenham(tempG.points[0], tempG.points[1], arg, 
                          tempG.width, tempG.color);
         
         if(g.mode==1){
@@ -205,29 +205,27 @@ class thunder{//类似龙骨炮的攻击
     // 绘制警告边框
     void drawWarning() {
         int x1, y1, x2, y2;
+        x1 = center.x - width/2;
+        y1 = center.y - height/2;
+        x2 = center.x + width/2;
+        y2 = center.y + height/2;
+        // 绘制边框
+        if(orientation == 'h') { // 水平矩形
+            drawLineBresenham({x2, y1}, {x2, y2}, false, 1, warningColor);
         
-        if (orientation == 'h') { // 水平矩形
-            x1 = center.x - width/2;
-            y1 = center.y - height/2;
-            x2 = center.x + width/2;
-            y2 = center.y + height/2;
+            drawLineBresenham({x1, y2}, {x1, y1}, false, 1, warningColor);
         } else { // 垂直矩形
-            x1 = center.x - height/2;
-            y1 = center.y - width/2;
-            x2 = center.x + height/2;
-            y2 = center.y + width/2;
+            drawLineBresenham({x1, y1}, {x2, y1}, false, 1, warningColor);
+        
+            drawLineBresenham({x1, y2}, {x2, y2}, false, 1, warningColor);
         }
         
-        // 绘制边框
- 
-        drawLineBresenham({x2, y1}, {x2, y2}, false, 1, warningColor);
-        
-        drawLineBresenham({x1, y2}, {x1, y1}, false, 1, warningColor);
     }
     
     // 绘制攻击，具有闪烁效果
     void drawAttack(double elapsed) {
         double curwidth = 5*cos(30*elapsed)+width+5;
+        double curheight = 5*cos(30*elapsed)+height+5;
         int x1, y1, x2, y2;
         
         if (orientation == 'h') { // 水平矩形
@@ -236,10 +234,10 @@ class thunder{//类似龙骨炮的攻击
             x2 = center.x + curwidth/2;
             y2 = center.y + height/2;
         } else { // 垂直矩形
-            x1 = center.x - height/2;
-            y1 = center.y - curwidth/2;
-            x2 = center.x + height/2;
-            y2 = center.y + curwidth/2;
+            x1 = center.x - width/2;
+            y1 = center.y - curheight/2;
+            x2 = center.x + width/2;
+            y2 = center.y + curheight/2;
         }
         
         // 填充矩形
@@ -256,6 +254,7 @@ class thunder{//类似龙骨炮的攻击
     bool detectPlayer(float x, float y) {
         double elapsed = stime - startTime;
         double curwidth = 5*cos(30*elapsed)+width+5;
+        double curheight = 5*cos(30*elapsed)+height+5;
         // 只有在攻击阶段才进行碰撞检测
         if (elapsed < 1.5 || elapsed >= 4.0) return false;
         
@@ -267,18 +266,178 @@ class thunder{//类似龙骨炮的攻击
             x2 = center.x + curwidth/2;
             y2 = center.y + height/2;
         } else { // 垂直矩形
-            x1 = center.x - height/2;
-            y1 = center.y - curwidth/2;
-            x2 = center.x + height/2;
-            y2 = center.y + curwidth/2;
+            x1 = center.x - width/2;
+            y1 = center.y - curheight/2;
+            x2 = center.x + width/2;
+            y2 = center.y + curheight/2;
         }
         
         // 检查玩家是否在矩形内
         return (x >= x1 && x <= x2 && y >= y1 && y <= y2);
     }
 };
+
+
+class trianglebone {
+public:
+    graphic g;           // 三角形图形
+    float speed;         // 移动速度
+    double st;           // 起始时间
+    char dir;            // 移动方向
+    bool isSmall;        // 是否为小三角形
+    bool hasSplit;       // 是否已经分裂
+    Point velocity;      // 速度向量
+    
+    trianglebone(graphic g = {{{0,0},{0,0},{0,0}}, 4, {1.0f,1.0f,1.0f}, 2}, 
+                 float s = 1.0, double st = stime, char dir = '4', bool isSmall = false)
+        : g(g), speed(s), st(st), dir(dir), isSmall(isSmall), hasSplit(false) {
+        // 根据方向设置速度向量 - 扩展为八个方向
+        switch(dir) {
+            // 基本四个方向
+            case 'u': velocity = {0, 1}; break;    // 上
+            case 'd': velocity = {0, -1}; break;   // 下
+            case 'l': velocity = {-1, 0}; break;   // 左
+            case 'r': velocity = {1, 0}; break;    // 右
+            
+            // 新增四个斜线方向
+            case '1': velocity = {1, 1}; break;    // 右上 (东北)
+            case '2': velocity = {1, -1}; break;   // 右下 (东南)
+            case '3': velocity = {-1, 1}; break;   // 左上 (西北)
+            case '4': velocity = {-1, -1}; break;  // 左下 (西南)
+            
+            default: velocity = {0, 0}; break;     // 默认不移动
+        }
+    }
+    
+    void move(double elapsed, double k = 1.0) {
+        // 使用translation.h中的函数创建平移矩阵
+        float moveDistance = elapsed * speed*k;
+        float dx = velocity.x * moveDistance;
+        float dy = velocity.y * moveDistance;
+        
+        // 使用您的translation.h中的函数
+        Matrix3x3 translateMatrix = createTranslationMatrix(dx, dy);
+        
+        // 累积变换
+        g.transform = translateMatrix * g.transform;
+    }
+    void rotate(double angle,double k=1.0,bool dir=true) {
+        // 计算旋转角度
+        //double angle = t * speed*k;//k是放大倍数
+        // 保存移动前的位置
+        
+        angle*=k*speed;
+        Point cur = getCenter();
+        cur = applyTransform(cur, g.transform);
+        // 创建旋转矩阵
+        Matrix3x3 rotationMatrix ;
+        if(dir)rotationMatrix = createRotationMatrix(cur.x, cur.y, angle);
+        else rotationMatrix = createRotationMatrix(cur.x, cur.y, -angle);
+        // 累积变换（新变换 = 旋转矩阵 * 当前变换）
+        
+        g.transform = rotationMatrix * g.transform;
+        
+    }
+
+    void render() {
+        // 创建临时图形用于渲染
+        graphic tempG = g;
+        // 应用存储的变换到所有点
+        for (auto &point : tempG.points) {
+            point = applyTransform(point, g.transform);
+        }
+        
+        // 使用多边形填充绘制三角形
+        fillPolygon(tempG.points);
+    }
+    
+    // 获取三角形中心点（用于分裂判断）
+    Point getCenter() {
+        Point center = {0, 0};
+        for (auto &point : g.points) {
+            Point transformed = applyTransform(point, g.transform);
+            center.x += transformed.x;
+            center.y += transformed.y;
+        }
+        center.x /= g.points.size();
+        center.y /= g.points.size();
+        return center;
+    }
+    
+    // 创建分裂后的小三角形
+    std::vector<trianglebone> split() {
+        std::vector<trianglebone> smallTriangles;
+        Point center = getCenter();
+        
+        // 创建8个小三角形的顶点（相对于中心点）
+        int smallSize = 20; // 小三角形大小
+        
+        // 原有的四个方向
+        graphic g1 = {{{center.x, center.y - smallSize}, 
+                       {center.x - smallSize/2, center.y}, 
+                       {center.x + smallSize/2, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t1(g1, 2, stime, 'u', true); // 上
+        
+        graphic g2 = {{{center.x, center.y + smallSize}, 
+                       {center.x - smallSize/2, center.y}, 
+                       {center.x + smallSize/2, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t2(g2, 2, stime, 'd', true); // 下
+        
+        graphic g3 = {{{center.x - smallSize, center.y}, 
+                       {center.x, center.y - smallSize/2}, 
+                       {center.x, center.y + smallSize/2}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t3(g3, 2, stime, 'l', true); // 左
+        
+        graphic g4 = {{{center.x + smallSize, center.y}, 
+                       {center.x, center.y - smallSize/2}, 
+                       {center.x, center.y + smallSize/2}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t4(g4, 3, stime, 'r', true); // 右
+        
+        // 增加四个斜向三角形
+        graphic g5 = {{{center.x + smallSize/2, center.y + smallSize/2}, 
+                       {center.x, center.y}, 
+                       {center.x + smallSize, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t5(g5, 2.5, stime, '1', true); // 右上
+        
+        graphic g6 = {{{center.x + smallSize/2, center.y - smallSize/2}, 
+                       {center.x, center.y}, 
+                       {center.x + smallSize, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t6(g6, 2.5, stime, '2', true); // 右下
+        
+        graphic g7 = {{{center.x - smallSize/2, center.y + smallSize/2}, 
+                       {center.x, center.y}, 
+                       {center.x - smallSize, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t7(g7, 2.5, stime, '3', true); // 左上
+        
+        graphic g8 = {{{center.x - smallSize/2, center.y - smallSize/2}, 
+                       {center.x, center.y}, 
+                       {center.x - smallSize, center.y}}, 
+                      1, {1.0f, 1.0f, 1.0f}, 2};
+        trianglebone t8(g8, 0.8, stime, '4', true); // 左下
+        
+        smallTriangles.push_back(t1);
+        smallTriangles.push_back(t2);
+        smallTriangles.push_back(t3);
+        smallTriangles.push_back(t4);
+        smallTriangles.push_back(t5);
+        smallTriangles.push_back(t6);
+        smallTriangles.push_back(t7);
+        smallTriangles.push_back(t8);
+        
+        return smallTriangles;
+    }
+};
+
 std::vector<normalbone>bone;//骨头攻击
 std::vector<normalbone>bluebone;
 std::vector<normalbone>orangebone;
 std::vector<thunder>thunderbone;
+std::vector<trianglebone> Trianglebone;
 #endif

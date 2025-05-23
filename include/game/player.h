@@ -45,8 +45,16 @@ void player::renderPlayer(){
     setpixel(x-2,y+2,1,color);setpixel(x+2,y+2,1,color);setpixel(x,y-4,1,color);
 }
 void player::drophp(){
-    if(!Debug)hp-=2;
-    playaudio.playSound("resource/hit.wav"); // 播放音效
+    if(!Debug) hp -= 1;
+    
+    // 限制受伤音效的播放频率，避免资源耗尽
+    static double lastHitSoundTime = 0;
+    double currentTime = glfwGetTime();
+    
+    if (currentTime - lastHitSoundTime > 0.5) { // 最多每0.5秒播放一次
+        audio.playSound("resource/hit.wav", true, true);
+        lastHitSoundTime = currentTime;
+    }
 }
 void player::move(GLFWwindow* window){
     oldx = x;

@@ -103,6 +103,7 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
         }
     }
     else if(level==5){
+        you.switchstat('r');
         processtime = starttime;
         int x = rand()%maxn;
         int y = rand()%maxn;
@@ -110,6 +111,62 @@ void selectepoch(int level, GLFWwindow* window, RenderFunc renderFunc){
         graphic g = {{{x,y}},6,{1.0f,1.0f,1.0f},2};
         normalbone b(g,40);
         bone.push_back(b);
+    }
+    else if(level==6){
+        you.switchstat('r');
+        for(int i=1;i<=5;i++){
+            graphic g = {{{-2000, 100+25*i},{2000,100+25*i}}, 0, {1.0f,1.0f,1.0f},2};// 在左边创建一个骨头
+            normalbone b(g,10);
+            bone.push_back(b);
+        }
+        you.y = 105;
+        thunder t({you.x,175},'h',25,150);
+        thunderbone.push_back(t);
+        thunder t1({250,you.y},'v',400,25);
+        thunderbone.push_back(t1);
+    }
+    else if(level==7){
+        you.switchstat('r');
+        for(int i=1;i<=7;i++){
+            graphic g = {{{50+50*i, -2000},{50+50*i,2000}}, 0, {1.0f,1.0f,1.0f},2};// 在左边创建一个骨头
+            normalbone b(g,10);
+            bone.push_back(b);
+        }
+        you.x=55;
+        thunder t({you.x,175},'h',50,150);
+        thunderbone.push_back(t);
+        thunder t1({250,you.y},'v',400,50);
+        thunderbone.push_back(t1);
+    }
+    else if(level==8){
+        you.switchstat('r');
+        
+        // 创建100个大三角形，初始位置在右上角窗口外
+        for(int i = 0; i < 100; i++) {
+            int startX =  500;  // 右上角窗口外
+            int startY = rand()%550 + 150;        // 窗口上方
+            int triangleSize = 30;            // 三角形大小
+            
+            // 创建等边三角形的顶点
+            graphic g = {{{startX, startY - triangleSize},           // 顶点
+                          {startX - triangleSize, startY + triangleSize/2},  // 左下
+                          {startX + triangleSize, startY + triangleSize/2}}, // 右下
+                         4, {1.0f, 1.0f, 1.0f}, 1};
+            
+            trianglebone tb(g, 0.8, stime + 3*(i/2), '4', false);  // 延迟生成
+            Trianglebone.push_back(tb);
+            startX = 0;  // 右上角窗口外
+            startY = rand()%550 + 150;        // 窗口上方
+            triangleSize = 30;            // 三角形大小
+            
+            // 创建等边三角形的顶点
+            graphic g2 = {{{startX, startY - triangleSize},           // 顶点
+                          {startX - triangleSize, startY + triangleSize/2},  // 左下
+                          {startX + triangleSize, startY + triangleSize/2}}, // 右下
+                         4, {1.0f, 1.0f, 1.0f}, 1};
+            trianglebone tb2(g2, 0.8, stime + 3*(i/2), '2', false);  // 延迟生成
+            Trianglebone.push_back(tb2);
+        }
     }
     else if(level==-1){//饶恕
         you.switchstat('r');
@@ -123,6 +180,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             gamemode=0;
         }
         else{
@@ -140,9 +198,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             }
             for(int j=0;j<thunderbone.size();j++){
                 thunderbone[j].render();
-                if(thunderbone[j].detectPlayer(you.x,you.y)){
-                    you.drophp();
-                }
+                
                 if(stime-thunderbone[j].startTime>=4.0){
                     thunderbone[j].center = {int(you.x),175};
                     thunderbone[j].startTime = stime;
@@ -158,6 +214,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             gamemode=0;
         }
         else{
@@ -176,6 +233,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             gamemode=0;
         }
         else{
@@ -197,6 +255,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             double curtime=stime;
             int curLmenu = LMenu;
             int curRmenu = RMenu;
@@ -231,6 +290,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             gamemode=0;
         }
         else{
@@ -254,6 +314,7 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             if(!bluebone.empty())bluebone.clear();
             if(!orangebone.empty())orangebone.clear();
             if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
             gamemode=0;
         }
         else{
@@ -270,6 +331,118 @@ void inline processepoch(int level,GLFWwindow* window, RenderFunc renderFunc){//
             }
             bone[0].render();
            
+        }
+    }
+    else if(level==6){
+        if(stime-starttime>=20.0){//回合结束
+            Idx=0;
+            if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
+            gamemode=0;
+        }
+        else{
+            for(int j=0;j<bone.size();j++){
+                bone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+                if(j%2==0)bone[j].move(stime-bone[j].st,50,'r');
+                else bone[j].move(stime-bone[j].st,50,'l');
+                bone[j].render(true);
+            }
+            for(int j=0;j<thunderbone.size();j++){
+                thunderbone[j].render();
+                
+                if(stime-thunderbone[j].startTime>=4.0){
+                    if(j==0){
+                        thunderbone[j].center = {int(you.x),175};
+                        thunderbone[j].startTime = stime;
+                        thunderbone[j].isPlayed = false;
+                    }
+                    else{
+                        thunderbone[j].center = {250,int(you.y)};
+                        thunderbone[j].startTime = stime;
+                        thunderbone[j].isPlayed = false;
+                    }
+                    
+                }
+            }
+        }
+    }
+    else if(level==7){
+        if(stime-starttime>=20.0){//回合结束
+            Idx=0;
+            if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
+            gamemode=0;
+        }
+        else{
+            for(int j=0;j<bone.size();j++){
+                bone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+                if(j%2==0)bone[j].move(stime-bone[j].st,50,'u');
+                else bone[j].move(stime-bone[j].st,50,'d');
+                bone[j].render(true);
+            }
+            for(int j=0;j<2;j++){
+                thunderbone[j].render();
+                
+                if(stime-thunderbone[j].startTime>=4.0){
+                    if(j==0){
+                        thunderbone[j].center = {int(you.x),175};
+                        thunderbone[j].startTime = stime;
+                        thunderbone[j].isPlayed = false;
+                    }
+                    else{
+                        thunderbone[j].center = {250,int(you.y)};
+                        thunderbone[j].startTime = stime;
+                        thunderbone[j].isPlayed = false;
+                    }
+                }
+            }
+        }
+    }
+    else if(level==8){
+        if(stime-starttime>=15.0){//回合结束
+            Idx=0;
+            if(!bone.empty())bone.clear();
+            if(!bluebone.empty())bluebone.clear();
+            if(!orangebone.empty())orangebone.clear();
+            if(!thunderbone.empty())thunderbone.clear();
+            if(!Trianglebone.empty())Trianglebone.clear();
+            gamemode=0;
+        }
+        
+        // 处理现有三角形
+        for(int j = 0; j < Trianglebone.size(); j++){
+            Trianglebone[j].g.transform = Matrix3x3(); // 重置变换矩阵
+            Trianglebone[j].rotate(stime-Trianglebone[j].st, 300);
+            Trianglebone[j].move(stime-Trianglebone[j].st, 150);
+            
+            // 检查大三角形是否到达分裂点（只有大三角形且未分裂才检查）
+            if(!Trianglebone[j].isSmall && !Trianglebone[j].hasSplit) {
+                Point center = Trianglebone[j].getCenter();
+                if(center.y <= 100) {
+                    // 播放分裂音效
+                    audio.playSound("resource/mus_creepy_ambience.ogg");
+                        
+                    // 创建4个小三角形
+                    std::vector<trianglebone> splitTriangles = Trianglebone[j].split();
+                    for(auto& newTriangle : splitTriangles) {
+                        Trianglebone.push_back(newTriangle);
+                    }
+                    // 标记为已分裂
+                    Trianglebone[j].hasSplit = true;
+                }
+            }
+                
+                // 渲染三角形（只渲染未分裂的或小三角形）
+            if(!Trianglebone[j].hasSplit || Trianglebone[j].isSmall) {
+                Trianglebone[j].render();
+            }
+            
         }
     }
     else if(level==-1){

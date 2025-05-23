@@ -10,22 +10,41 @@ void inline render(GLFWwindow* window);
 void inline isgameover(GLFWwindow* window,bool arg);
 int main(){
     initRandom();
-    const int width = 500, height = 500;//设置窗口大小
-    glfwSwapInterval(1);//垂直同步
+    const int width = 500, height = 500;
+    glfwSwapInterval(1);
     GLFWwindow* window = init(width, height);
-    // 注册键盘回调函数
     glfwSetKeyCallback(window, key_callback);
-    audio.playBackgroundMusic("resource/bgm.mp3", true); // 播放背景音乐
+    
+    audio.playBackgroundMusic("resource/bgm.mp3", true);
+    
+    // 添加帧计数器用于定期清理
+    int frameCount = 0;
+    
     while(!glfwWindowShouldClose(window)) {
         stime = glfwGetTime();
-        flushwindow(); 
-        if(you.hp<=0){isgameover(window,false);}//游戏失败
-        if(enemyhp<=0){isgameover(window,true);}//游戏胜利
-        if(gamemode==1){processepoch(level,window,render);you.move(window);you.iscollided();}//移动操作
-        render(window);                                         // 最后显示到屏幕
+        flushwindow();
+        
+        // 每60帧清理一次音频资源（约1秒一次）
+        if (++frameCount > 60) {
+            audio.cleanupFinishedSounds();
+            frameCount = 0;
+        }
+        
+        if(you.hp<=0){isgameover(window,false);}
+        if(enemyhp<=0){isgameover(window,true);}
+        if(gamemode==1){
+            processepoch(level,window,render);
+            you.move(window);
+            you.iscollided();
+        }
+        
+        render(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+    
+    // 游戏结束时强制清理所有音频资源
+    audio.forceCleanup();
     audio.stopBackgroundMusic();
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -137,10 +156,10 @@ void inline render(GLFWwindow* window){
 void inline isgameover(GLFWwindow* window, bool arg) {//判断游戏结束或者胜利
     if (arg == false) {
         // 游戏失败处理
-        playaudio.playBackgroundMusic("resource/gameover.wav"); // 播放音效
+        audio.playBackgroundMusic("resource/gameover.wav"); // 播放音效
     } else {
         // 游戏胜利处理
-       playaudio.playBackgroundMusic("resource/Congratulations.wav"); // 播放胜利音效
+        audio.playBackgroundMusic("resource/Congratulations.wav"); // 播放胜利音效
     }
     
     // 显示结束画面

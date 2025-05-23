@@ -11,7 +11,7 @@
 #include<graph/bezier.h>
  // 路径要根据您的图标位置调整
 int level;//现在是第几轮
-int TotalRound = 6;
+int TotalRound = 9;
 int enemyhp=100;//敌人生命值
 int Idx=0;//选择菜单时的指向
 int gamemode=0;//游戏模式，0为菜单，1为游戏
@@ -22,11 +22,7 @@ int LMenu = 50,RMenu=450,DMenu=100,UMenu=250;//菜单位置
 int food = 5;//食物数量
 void flushwindow() {
     // 刷新屏幕
-    for(int i=0; i<maxn; i++) {
-        for(int j=0; j<maxn; j++) {
-            g[i][j] = {0.0, 0.0, 0.0};
-        }
-    }
+    memset(g, 0, sizeof(g));
 }
 
 #endif

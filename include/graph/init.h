@@ -14,6 +14,8 @@
 #include<thread>
 #include<atomic>
 #include<algorithm>
+#include<stdlib.h>
+#include<string.h>
 void initRandom() {
     srand(static_cast<unsigned>(time(nullptr)));
 }

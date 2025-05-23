@@ -5,12 +5,12 @@
 #endif
 // Bresenham直线算法
 void drawLineBresenham(Point start, Point end, bool arg=false, int w =curwidth, Color color=curcolor) {//这里的arg是为了区分是否画虚线，为True时画虚线
-    const int step = 3*w;
+    const int step = 50;
     const int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
     const int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
     int err = dx + dy, e2,mark=1;
     while (true) {
-        if((mark-1)%step==0){
+        if((mark-1)%step<=step/5){
             setpixel(start.x,start.y,w,color);
         }
         //把对应的像素点“涂黑”
